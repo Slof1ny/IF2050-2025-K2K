@@ -1,4 +1,4 @@
-package Main.Model;
+package main.Model;
 
 public class Dokter {
     private String nama;

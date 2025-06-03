@@ -1,7 +1,7 @@
 package main.Model;
 
 import java.util.Date;
-import java.util.Time;
+import java.time.LocalTime;
 
 
 public class JadwalPemeriksaan {
