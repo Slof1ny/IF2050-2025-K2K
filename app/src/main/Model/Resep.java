@@ -1,6 +1,6 @@
 package main.Model;
 
-public class Recipe {
+public class Resep {
     private int IDResep;
     private String IsiResepl;
     private Date Tanggal;
