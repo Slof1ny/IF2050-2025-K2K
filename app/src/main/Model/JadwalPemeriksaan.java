@@ -1,8 +1,7 @@
 package main.Model;
 
 import java.util.Date;
-import java.time.LocalTime;
-
+import java.sql.Time;
 
 public class JadwalPemeriksaan {
     private int IdJadwal;
@@ -14,6 +13,8 @@ public class JadwalPemeriksaan {
         this.IdJadwal = idJadwal;
         this.Waktu = waktu;
         this.Tanggal = tanggal;
+        this.Pasien = pasien;
+    }
 
     public int getIdJadwal() {
         return IdJadwal;
