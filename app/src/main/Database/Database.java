@@ -2,6 +2,8 @@ package main.Database;
 
 import main.Model.Pelanggan;
 import main.Model.Resep;
+import main.Model.Dokter;
+import main.Model.JadwalPemeriksaan;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,8 +45,7 @@ public class Database {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """;
-        
-        // Tabel resep dengan foreign key ke pelanggan
+          // Tabel resep dengan foreign key ke pelanggan
         String createResepTableSQL = """
             CREATE TABLE IF NOT EXISTS resep (
                 id_resep INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,6 +58,30 @@ public class Database {
             )
         """;
         
+        // Tabel dokter
+        String createDokterTableSQL = """
+            CREATE TABLE IF NOT EXISTS dokter (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nama TEXT NOT NULL,
+                spesialisasi TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """;
+          // Tabel jadwal_pemeriksaan dengan foreign key ke pelanggan dan dokter
+        String createJadwalPemeriksaanTableSQL = """
+            CREATE TABLE IF NOT EXISTS jadwal_pemeriksaan (
+                id_jadwal INTEGER PRIMARY KEY AUTOINCREMENT,
+                tanggal_waktu DATETIME NOT NULL,
+                id_pasien INTEGER NOT NULL,
+                id_dokter INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (id_pasien) REFERENCES pelanggan(id) ON DELETE CASCADE,
+                FOREIGN KEY (id_dokter) REFERENCES dokter(id) ON DELETE CASCADE
+            )
+        """;
+        
         String createPelangganTriggerSQL = """
             CREATE TRIGGER IF NOT EXISTS update_pelanggan_timestamp 
             AFTER UPDATE ON pelanggan
@@ -64,8 +89,7 @@ public class Database {
                 UPDATE pelanggan SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
             END
         """;
-        
-        String createResepTriggerSQL = """
+          String createResepTriggerSQL = """
             CREATE TRIGGER IF NOT EXISTS update_resep_timestamp 
             AFTER UPDATE ON resep
             BEGIN
@@ -73,12 +97,31 @@ public class Database {
             END
         """;
         
-        try (Statement stmt = connection.createStatement()) {
+        String createDokterTriggerSQL = """
+            CREATE TRIGGER IF NOT EXISTS update_dokter_timestamp 
+            AFTER UPDATE ON dokter
+            BEGIN
+                UPDATE dokter SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END
+        """;
+        
+        String createJadwalPemeriksaanTriggerSQL = """
+            CREATE TRIGGER IF NOT EXISTS update_jadwal_pemeriksaan_timestamp 
+            AFTER UPDATE ON jadwal_pemeriksaan
+            BEGIN
+                UPDATE jadwal_pemeriksaan SET updated_at = CURRENT_TIMESTAMP WHERE id_jadwal = NEW.id_jadwal;
+            END
+        """;
+          try (Statement stmt = connection.createStatement()) {
             stmt.execute(createPelangganTableSQL);
             stmt.execute(createResepTableSQL);
+            stmt.execute(createDokterTableSQL);
+            stmt.execute(createJadwalPemeriksaanTableSQL);
             stmt.execute(createPelangganTriggerSQL);
             stmt.execute(createResepTriggerSQL);
-            System.out.println("Tables 'pelanggan' and 'resep' with triggers created or already exist.");
+            stmt.execute(createDokterTriggerSQL);
+            stmt.execute(createJadwalPemeriksaanTriggerSQL);
+            System.out.println("Tables 'pelanggan', 'resep', 'dokter', 'jadwal_pemeriksaan' with triggers created or already exist.");
         } catch (SQLException e) {
             System.err.println("Error creating tables: " + e.getMessage());
         }
@@ -461,9 +504,359 @@ public class Database {
             System.err.println("Error getting resep with pelanggan info: " + e.getMessage());
         }
         
-        return resepInfoList;
+        return resepInfoList;    }
+    
+    // ==================== DOKTER CRUD OPERATIONS ====================
+    
+    // Method untuk menambah dokter baru
+    public boolean addDokter(Dokter dokter) {
+        String insertSQL = "INSERT INTO dokter (nama, spesialisasi) VALUES (?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setString(1, dokter.getNama());
+            stmt.setString(2, dokter.getSpesialisasi());
+            
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                // Get the last inserted ID
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet rs = lastIdStmt.executeQuery()) {
+                    if (rs.next()) {
+                        dokter.setId(rs.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding dokter: " + e.getMessage());
+        }
+        return false;
     }
     
+    // Method untuk mengambil semua dokter
+    public List<Dokter> getAllDokter() {
+        List<Dokter> dokterList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM dokter ORDER BY id";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Dokter dokter = new Dokter(
+                    rs.getString("nama"),
+                    rs.getString("spesialisasi"),
+                    rs.getInt("id")
+                );
+                dokterList.add(dokter);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting all dokter: " + e.getMessage());
+        }
+        
+        return dokterList;
+    }
+    
+    // Method untuk mengambil dokter berdasarkan ID
+    public Dokter getDokterById(int id) {
+        String selectSQL = "SELECT * FROM dokter WHERE id = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                return new Dokter(
+                    rs.getString("nama"),
+                    rs.getString("spesialisasi"),
+                    rs.getInt("id")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting dokter by ID: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    // Method untuk mengupdate data dokter
+    public boolean updateDokter(Dokter dokter) {
+        String updateSQL = "UPDATE dokter SET nama = ?, spesialisasi = ? WHERE id = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setString(1, dokter.getNama());
+            stmt.setString(2, dokter.getSpesialisasi());
+            stmt.setInt(3, dokter.getId());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating dokter: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus dokter berdasarkan ID
+    public boolean deleteDokter(int id) {
+        String deleteSQL = "DELETE FROM dokter WHERE id = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, id);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting dokter: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mencari dokter berdasarkan spesialisasi
+    public List<Dokter> searchDokterBySpesialisasi(String spesialisasi) {
+        List<Dokter> dokterList = new ArrayList<>();
+        String searchSQL = "SELECT * FROM dokter WHERE spesialisasi LIKE ? ORDER BY nama";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(searchSQL)) {
+            stmt.setString(1, "%" + spesialisasi + "%");
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                Dokter dokter = new Dokter(
+                    rs.getString("nama"),
+                    rs.getString("spesialisasi"),
+                    rs.getInt("id")
+                );
+                dokterList.add(dokter);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error searching dokter by spesialisasi: " + e.getMessage());
+        }
+        
+        return dokterList;
+    }
+    
+    // Method untuk menghitung total dokter
+    public int getTotalDokter() {
+        String countSQL = "SELECT COUNT(*) FROM dokter";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(countSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error counting dokter: " + e.getMessage());
+        }
+        
+        return 0;
+    }
+      // ==================== JADWAL PEMERIKSAAN CRUD OPERATIONS ====================
+    
+    // Method untuk menambah jadwal pemeriksaan baru
+    public boolean addJadwalPemeriksaan(JadwalPemeriksaan jadwal) {
+        String insertSQL = "INSERT INTO jadwal_pemeriksaan (tanggal_waktu, id_pasien, id_dokter) VALUES (datetime(?/1000, 'unixepoch', 'localtime'), ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setLong(1, jadwal.getTanggalWaktu().getTime());
+            stmt.setInt(2, jadwal.getIdPasien());
+            stmt.setInt(3, jadwal.getIdDokter());
+            
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                // Get the last inserted ID
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet rs = lastIdStmt.executeQuery()) {
+                    if (rs.next()) {
+                        jadwal.setIdJadwal(rs.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding jadwal pemeriksaan: " + e.getMessage());
+        }
+        return false;
+    }
+      // Method untuk mengambil semua jadwal pemeriksaan
+    public List<JadwalPemeriksaan> getAllJadwalPemeriksaan() {
+        List<JadwalPemeriksaan> jadwalList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM jadwal_pemeriksaan ORDER BY tanggal_waktu";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                JadwalPemeriksaan jadwal = new JadwalPemeriksaan(
+                    rs.getInt("id_jadwal"),
+                    rs.getTimestamp("tanggal_waktu"),
+                    rs.getInt("id_pasien"),
+                    rs.getInt("id_dokter")
+                );
+                jadwalList.add(jadwal);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting all jadwal pemeriksaan: " + e.getMessage());
+        }
+        
+        return jadwalList;
+    }
+      // Method untuk mengambil jadwal pemeriksaan berdasarkan ID
+    public JadwalPemeriksaan getJadwalPemeriksaanById(int idJadwal) {
+        String selectSQL = "SELECT * FROM jadwal_pemeriksaan WHERE id_jadwal = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idJadwal);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                return new JadwalPemeriksaan(
+                    rs.getInt("id_jadwal"),
+                    rs.getTimestamp("tanggal_waktu"),
+                    rs.getInt("id_pasien"),
+                    rs.getInt("id_dokter")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting jadwal pemeriksaan by ID: " + e.getMessage());
+        }
+        
+        return null;
+    }
+      // Method untuk mengambil jadwal pemeriksaan berdasarkan ID pasien
+    public List<JadwalPemeriksaan> getJadwalPemeriksaanByPasienId(int idPasien) {
+        List<JadwalPemeriksaan> jadwalList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM jadwal_pemeriksaan WHERE id_pasien = ? ORDER BY tanggal_waktu";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idPasien);
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                JadwalPemeriksaan jadwal = new JadwalPemeriksaan(
+                    rs.getInt("id_jadwal"),
+                    rs.getTimestamp("tanggal_waktu"),
+                    rs.getInt("id_pasien"),
+                    rs.getInt("id_dokter")
+                );
+                jadwalList.add(jadwal);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting jadwal pemeriksaan by pasien ID: " + e.getMessage());
+        }
+        
+        return jadwalList;
+    }
+      // Method untuk mengambil jadwal pemeriksaan berdasarkan ID dokter
+    public List<JadwalPemeriksaan> getJadwalPemeriksaanByDokterId(int idDokter) {
+        List<JadwalPemeriksaan> jadwalList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM jadwal_pemeriksaan WHERE id_dokter = ? ORDER BY tanggal_waktu";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idDokter);
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                JadwalPemeriksaan jadwal = new JadwalPemeriksaan(
+                    rs.getInt("id_jadwal"),
+                    rs.getTimestamp("tanggal_waktu"),
+                    rs.getInt("id_pasien"),
+                    rs.getInt("id_dokter")
+                );
+                jadwalList.add(jadwal);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting jadwal pemeriksaan by dokter ID: " + e.getMessage());
+        }
+        
+        return jadwalList;
+    }
+      // Method untuk mengupdate jadwal pemeriksaan
+    public boolean updateJadwalPemeriksaan(JadwalPemeriksaan jadwal) {
+        String updateSQL = "UPDATE jadwal_pemeriksaan SET tanggal_waktu = datetime(?/1000, 'unixepoch', 'localtime'), id_pasien = ?, id_dokter = ? WHERE id_jadwal = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setLong(1, jadwal.getTanggalWaktu().getTime());
+            stmt.setInt(2, jadwal.getIdPasien());
+            stmt.setInt(3, jadwal.getIdDokter());
+            stmt.setInt(4, jadwal.getIdJadwal());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating jadwal pemeriksaan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus jadwal pemeriksaan berdasarkan ID
+    public boolean deleteJadwalPemeriksaan(int idJadwal) {
+        String deleteSQL = "DELETE FROM jadwal_pemeriksaan WHERE id_jadwal = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, idJadwal);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting jadwal pemeriksaan: " + e.getMessage());
+        }
+        return false;
+    }
+      // Method untuk mengambil jadwal pemeriksaan dengan informasi pasien dan dokter (JOIN)
+    public List<String> getJadwalPemeriksaanWithInfo() {
+        List<String> jadwalInfoList = new ArrayList<>();
+        String selectSQL = """
+            SELECT j.id_jadwal, j.tanggal_waktu,
+                   p.nama as nama_pasien, p.email as email_pasien,
+                   d.nama as nama_dokter, d.spesialisasi
+            FROM jadwal_pemeriksaan j
+            JOIN pelanggan p ON j.id_pasien = p.id
+            JOIN dokter d ON j.id_dokter = d.id
+            ORDER BY j.tanggal_waktu
+        """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+              while (rs.next()) {
+                String jadwalInfo = String.format(
+                    "Jadwal ID: %d | Tanggal & Waktu: %s | Pasien: %s (%s) | Dokter: %s (%s)",
+                    rs.getInt("id_jadwal"),
+                    rs.getTimestamp("tanggal_waktu"),
+                    rs.getString("nama_pasien"),
+                    rs.getString("email_pasien"),
+                    rs.getString("nama_dokter"),
+                    rs.getString("spesialisasi")
+                );
+                jadwalInfoList.add(jadwalInfo);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting jadwal pemeriksaan with info: " + e.getMessage());
+        }
+        
+        return jadwalInfoList;
+    }
+    
+    // Method untuk menghitung total jadwal pemeriksaan
+    public int getTotalJadwalPemeriksaan() {
+        String countSQL = "SELECT COUNT(*) FROM jadwal_pemeriksaan";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(countSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error counting jadwal pemeriksaan: " + e.getMessage());
+        }
+        
+        return 0;
+    }
+
     // Method untuk menutup koneksi database
     public void closeConnection() {
         try {

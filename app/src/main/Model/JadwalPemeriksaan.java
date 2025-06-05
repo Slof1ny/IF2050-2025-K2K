@@ -1,19 +1,18 @@
 package main.Model;
 
 import java.util.Date;
-import java.sql.Time;
 
 public class JadwalPemeriksaan {
     private int IdJadwal;
-    private Time Waktu;
-    private Date Tanggal;
-    private Pelanggan Pasien;
+    private Date TanggalWaktu; // Menggabungkan tanggal dan waktu dalam satu field
+    private int IdPasien;
+    private int IdDokter;
 
-    public JadwalPemeriksaan(int idJadwal, Time waktu, Date tanggal, Pelanggan pasien) {
+    public JadwalPemeriksaan(int idJadwal, Date tanggalWaktu, int idPasien, int idDokter) {
         this.IdJadwal = idJadwal;
-        this.Waktu = waktu;
-        this.Tanggal = tanggal;
-        this.Pasien = pasien;
+        this.TanggalWaktu = tanggalWaktu;
+        this.IdPasien = idPasien;
+        this.IdDokter = idDokter;
     }
 
     public int getIdJadwal() {
@@ -24,31 +23,29 @@ public class JadwalPemeriksaan {
         this.IdJadwal = idJadwal;
     }
 
-    public Date getTanggal() {
-        return Tanggal;
+    public Date getTanggalWaktu() {
+        return TanggalWaktu;
     }
 
-    public void setTanggal(Date tanggal) {
-        this.Tanggal = tanggal;
+    public void setTanggalWaktu(Date tanggalWaktu) {
+        this.TanggalWaktu = tanggalWaktu;
     }
 
-    public Time getWaktu() {
-        return Waktu;
+    public int getIdPasien() {
+        return IdPasien;
+    }    public void setIdPasien(int idPasien) {
+        this.IdPasien = idPasien;
     }
 
-    public void setWaktu(Time waktu) {
-        this.Waktu = waktu;
+    public int getIdDokter() {
+        return IdDokter;
     }
 
-    public Pelanggan getPasien() {
-        return Pasien;
-    }
-
-    public void setPasien(Pelanggan pasien) {
-        this.Pasien = pasien;
+    public void setIdDokter(int idDokter) {
+        this.IdDokter = idDokter;
     }
 
     public String ambilRiwayatPemeriksaan() {
-        return "ID Jadwal: " + IdJadwal + ", Tanggal: " + Tanggal.toString() + ", Waktu: " + Waktu.toString() + ", Pasien: " + Pasien.getNama();
+        return "ID Jadwal: " + IdJadwal + ", Tanggal & Waktu: " + TanggalWaktu.toString() + ", ID Pasien: " + IdPasien + ", ID Dokter: " + IdDokter;
     }
 }

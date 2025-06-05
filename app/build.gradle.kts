@@ -65,6 +65,30 @@ tasks.register<JavaExec>("runInspector") {
     mainClass = "main.Database.DatabaseInspector"
 }
 
+// Task untuk menjalankan DatabaseDokterJadwalExample
+tasks.register<JavaExec>("runDokterJadwalExample") {
+    group = "application"
+    description = "Run DatabaseDokterJadwalExample to test Dokter and JadwalPemeriksaan functionality"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "main.Database.DatabaseDokterJadwalExample"
+}
+
+// Task untuk menjalankan Database Migration
+tasks.register<JavaExec>("runMigration") {
+    group = "application"
+    description = "Run DatabaseMigration to update JadwalPemeriksaan table structure"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "main.Database.DatabaseMigration"
+}
+
+// Task untuk membersihkan duplikat dokter
+tasks.register<JavaExec>("runDokterCleanup") {
+    group = "application"
+    description = "Run DokterCleanup to remove duplicate doctor records"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "main.Database.DokterCleanup"
+}
+
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
