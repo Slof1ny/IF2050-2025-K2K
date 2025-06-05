@@ -76,8 +76,63 @@ public class DatabaseInspector {
                 }
             }
             
-            // Check SQLite date/time functions
-            System.out.println("\n5. SQLite DateTime Functions Test:");
+            // Check admin table
+            System.out.println("\n5. Tabel Admin:");
+            String selectAdmin = "SELECT * FROM admin";
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery(selectAdmin)) {
+                
+                while (rs.next()) {
+                    System.out.println("ID: " + rs.getInt("ID") + 
+                                     ", Username: " + rs.getString("username") +
+                                     ", Password: " + rs.getString("password") +
+                                     ", Created: " + rs.getString("created_at") +
+                                     ", Updated: " + rs.getString("updated_at"));
+                }
+            }
+            
+            // Check laporan table
+            System.out.println("\n6. Tabel Laporan:");
+            String selectLaporan = "SELECT * FROM laporan";
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery(selectLaporan)) {
+                
+                while (rs.next()) {
+                    System.out.println("ID Laporan: " + rs.getInt("id_laporan"));
+                    System.out.println("  Tipe: " + rs.getString("tipe_laporan"));
+                    System.out.println("  Periode Mulai: " + rs.getString("periode_mulai"));
+                    System.out.println("  Periode Selesai: " + rs.getString("periode_selesai"));
+                    System.out.println("  Tanggal Dibuat: " + rs.getString("tanggal_dibuat"));
+                    System.out.println("  Konten: " + rs.getString("konten_laporan"));
+                    System.out.println("  Dibuat Oleh (Admin ID): " + rs.getInt("dibuat_oleh"));
+                    System.out.println("  Created: " + rs.getString("created_at"));
+                    System.out.println("  Updated: " + rs.getString("updated_at"));
+                    System.out.println("---");
+                }
+            }
+            
+            // Check laporan with admin info using JOIN
+            System.out.println("\n7. Laporan dengan Info Admin (JOIN):");
+            String joinQuery = """
+                SELECT l.id_laporan, l.tipe_laporan, l.periode_mulai, l.periode_selesai,
+                       l.tanggal_dibuat, l.konten_laporan, a.username as admin_username
+                FROM laporan l
+                JOIN admin a ON l.dibuat_oleh = a.ID
+                ORDER BY l.tanggal_dibuat DESC
+            """;
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery(joinQuery)) {
+                
+                while (rs.next()) {
+                    System.out.println("Laporan ID: " + rs.getInt("id_laporan") + 
+                                     " | Tipe: " + rs.getString("tipe_laporan") +
+                                     " | Dibuat oleh: " + rs.getString("admin_username") +
+                                     " | Tanggal: " + rs.getString("tanggal_dibuat"));
+                    System.out.println("  Konten: " + rs.getString("konten_laporan"));
+                    System.out.println("---");
+                }
+            }            // Check SQLite date/time functions
+            System.out.println("\n8. SQLite DateTime Functions Test:");
             String dateTimeTest = "SELECT datetime('now') as current_datetime, " +
                                  "strftime('%s', 'now') as unix_timestamp, " +
                                  "datetime(1749128732578/1000, 'unixepoch') as from_millis";
@@ -90,8 +145,9 @@ public class DatabaseInspector {
                     System.out.println("From Milliseconds: " + rs.getString("from_millis"));
                 }
             }
-              // Check data types in resep table
-            System.out.println("\n6. Schema Information:");
+            
+            // Check data types in resep table
+            System.out.println("\n9. Schema Information:");
             String schemaInfo = "PRAGMA table_info(resep)";
             try (Statement stmt = connection.createStatement();
                  ResultSet rs = stmt.executeQuery(schemaInfo)) {
@@ -125,6 +181,34 @@ public class DatabaseInspector {
                  ResultSet rs = stmt.executeQuery(schemaJadwal)) {
                 
                 System.out.println("\nJadwal Pemeriksaan table schema:");
+                while (rs.next()) {
+                    System.out.println("Column: " + rs.getString("name") + 
+                                     ", Type: " + rs.getString("type") +
+                                     ", NotNull: " + rs.getInt("notnull") +
+                                     ", Default: " + rs.getString("dflt_value"));
+                }
+            }
+            
+            // Check admin table schema
+            String schemaAdmin = "PRAGMA table_info(admin)";
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery(schemaAdmin)) {
+                
+                System.out.println("\nAdmin table schema:");
+                while (rs.next()) {
+                    System.out.println("Column: " + rs.getString("name") + 
+                                     ", Type: " + rs.getString("type") +
+                                     ", NotNull: " + rs.getInt("notnull") +
+                                     ", Default: " + rs.getString("dflt_value"));
+                }
+            }
+            
+            // Check laporan table schema
+            String schemaLaporan = "PRAGMA table_info(laporan)";
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery(schemaLaporan)) {
+                
+                System.out.println("\nLaporan table schema:");
                 while (rs.next()) {
                     System.out.println("Column: " + rs.getString("name") + 
                                      ", Type: " + rs.getString("type") +

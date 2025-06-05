@@ -17,9 +17,7 @@ public class Admin {
     public String getPassword() {return password;}
     public void setID(int ID) {this.ID = ID;}
     public void setUsername(String username) {this.username = username;}
-    public void setPassword(String password) {this.password = password;}
-
-    public boolean Login(String Username,int Password) {
+    public void setPassword(String password) {this.password = password;}    public boolean Login(String Username, String Password) {
         if (this.username.equals(Username) && this.password.equals(Password)) {
             return true;
         } else {

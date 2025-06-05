@@ -4,6 +4,8 @@ import main.Model.Pelanggan;
 import main.Model.Resep;
 import main.Model.Dokter;
 import main.Model.JadwalPemeriksaan;
+import main.Model.Admin;
+import main.Model.Laporan;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,8 +69,7 @@ public class Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-        """;
-          // Tabel jadwal_pemeriksaan dengan foreign key ke pelanggan dan dokter
+        """;        // Tabel jadwal_pemeriksaan dengan foreign key ke pelanggan dan dokter
         String createJadwalPemeriksaanTableSQL = """
             CREATE TABLE IF NOT EXISTS jadwal_pemeriksaan (
                 id_jadwal INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,6 +80,33 @@ public class Database {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (id_pasien) REFERENCES pelanggan(id) ON DELETE CASCADE,
                 FOREIGN KEY (id_dokter) REFERENCES dokter(id) ON DELETE CASCADE
+            )
+        """;
+        
+        // Tabel admin
+        String createAdminTableSQL = """
+            CREATE TABLE IF NOT EXISTS admin (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """;
+        
+        // Tabel laporan dengan foreign key ke admin
+        String createLaporanTableSQL = """
+            CREATE TABLE IF NOT EXISTS laporan (
+                id_laporan INTEGER PRIMARY KEY AUTOINCREMENT,
+                tipe_laporan TEXT NOT NULL,
+                periode_mulai DATETIME NOT NULL,
+                periode_selesai DATETIME NOT NULL,
+                tanggal_dibuat DATETIME DEFAULT CURRENT_TIMESTAMP,
+                konten_laporan TEXT,
+                dibuat_oleh INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (dibuat_oleh) REFERENCES admin(ID) ON DELETE CASCADE
             )
         """;
         
@@ -104,24 +132,42 @@ public class Database {
                 UPDATE dokter SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
             END
         """;
-        
-        String createJadwalPemeriksaanTriggerSQL = """
+          String createJadwalPemeriksaanTriggerSQL = """
             CREATE TRIGGER IF NOT EXISTS update_jadwal_pemeriksaan_timestamp 
             AFTER UPDATE ON jadwal_pemeriksaan
             BEGIN
                 UPDATE jadwal_pemeriksaan SET updated_at = CURRENT_TIMESTAMP WHERE id_jadwal = NEW.id_jadwal;
             END
         """;
-          try (Statement stmt = connection.createStatement()) {
+        
+        String createAdminTriggerSQL = """
+            CREATE TRIGGER IF NOT EXISTS update_admin_timestamp 
+            AFTER UPDATE ON admin
+            BEGIN
+                UPDATE admin SET updated_at = CURRENT_TIMESTAMP WHERE ID = NEW.ID;
+            END
+        """;
+        
+        String createLaporanTriggerSQL = """
+            CREATE TRIGGER IF NOT EXISTS update_laporan_timestamp 
+            AFTER UPDATE ON laporan
+            BEGIN
+                UPDATE laporan SET updated_at = CURRENT_TIMESTAMP WHERE id_laporan = NEW.id_laporan;
+            END
+        """;        try (Statement stmt = connection.createStatement()) {
             stmt.execute(createPelangganTableSQL);
             stmt.execute(createResepTableSQL);
             stmt.execute(createDokterTableSQL);
             stmt.execute(createJadwalPemeriksaanTableSQL);
+            stmt.execute(createAdminTableSQL);
+            stmt.execute(createLaporanTableSQL);
             stmt.execute(createPelangganTriggerSQL);
             stmt.execute(createResepTriggerSQL);
             stmt.execute(createDokterTriggerSQL);
             stmt.execute(createJadwalPemeriksaanTriggerSQL);
-            System.out.println("Tables 'pelanggan', 'resep', 'dokter', 'jadwal_pemeriksaan' with triggers created or already exist.");
+            stmt.execute(createAdminTriggerSQL);
+            stmt.execute(createLaporanTriggerSQL);
+            System.out.println("Tables 'pelanggan', 'resep', 'dokter', 'jadwal_pemeriksaan', 'admin', 'laporan' with triggers created or already exist.");
         } catch (SQLException e) {
             System.err.println("Error creating tables: " + e.getMessage());
         }
@@ -876,5 +922,326 @@ public class Database {
         } catch (SQLException e) {
             return false;
         }
+    }
+    
+    // =================== ADMIN CRUD METHODS ===================
+    
+    // Method untuk menambah admin baru
+    public boolean addAdmin(Admin admin) {
+        String insertSQL = "INSERT INTO admin (username, password) VALUES (?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setString(1, admin.getUsername());
+            stmt.setString(2, admin.getPassword());
+            
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                // Get the last inserted ID
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet rs = lastIdStmt.executeQuery()) {
+                    if (rs.next()) {
+                        admin.setID(rs.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding admin: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil semua data admin
+    public List<Admin> getAllAdmin() {
+        List<Admin> adminList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM admin ORDER BY ID";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Admin admin = new Admin(
+                    rs.getInt("ID"),
+                    rs.getString("username"),
+                    rs.getString("password")
+                );
+                adminList.add(admin);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting all admin: " + e.getMessage());
+        }
+        
+        return adminList;
+    }
+    
+    // Method untuk mengambil admin berdasarkan ID
+    public Admin getAdminById(int id) {
+        String selectSQL = "SELECT * FROM admin WHERE ID = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, id);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Admin(
+                        rs.getInt("ID"),
+                        rs.getString("username"),
+                        rs.getString("password")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting admin by ID: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    // Method untuk login admin
+    public Admin loginAdmin(String username, String password) {
+        String selectSQL = "SELECT * FROM admin WHERE username = ? AND password = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Admin(
+                        rs.getInt("ID"),
+                        rs.getString("username"),
+                        rs.getString("password")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error during admin login: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    // Method untuk update admin
+    public boolean updateAdmin(Admin admin) {
+        String updateSQL = "UPDATE admin SET username = ?, password = ? WHERE ID = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setString(1, admin.getUsername());
+            stmt.setString(2, admin.getPassword());
+            stmt.setInt(3, admin.getID());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating admin: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus admin
+    public boolean deleteAdmin(int id) {
+        String deleteSQL = "DELETE FROM admin WHERE ID = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, id);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting admin: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // =================== LAPORAN CRUD METHODS ===================
+    
+    // Method untuk menambah laporan baru
+    public boolean addLaporan(Laporan laporan) {
+        String insertSQL = """
+            INSERT INTO laporan (tipe_laporan, periode_mulai, periode_selesai, 
+                               tanggal_dibuat, konten_laporan, dibuat_oleh) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setString(1, laporan.getTipeLaporan());
+            stmt.setTimestamp(2, new Timestamp(laporan.getPeriodeMulai().getTime()));
+            stmt.setTimestamp(3, new Timestamp(laporan.getPeriodeSelesai().getTime()));
+            stmt.setTimestamp(4, new Timestamp(laporan.getTanggalDibuat().getTime()));
+            stmt.setString(5, laporan.getKontenLaporan());
+            stmt.setInt(6, laporan.getDibuatOleh());
+            
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                // Get the last inserted ID
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet rs = lastIdStmt.executeQuery()) {
+                    if (rs.next()) {
+                        laporan.setIdLaporan(rs.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding laporan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil semua data laporan
+    public List<Laporan> getAllLaporan() {
+        List<Laporan> laporanList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM laporan ORDER BY tanggal_dibuat DESC";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Laporan laporan = new Laporan(
+                    rs.getInt("id_laporan"),
+                    rs.getString("tipe_laporan"),
+                    new java.util.Date(rs.getTimestamp("periode_mulai").getTime()),
+                    new java.util.Date(rs.getTimestamp("periode_selesai").getTime()),
+                    new java.util.Date(rs.getTimestamp("tanggal_dibuat").getTime()),
+                    rs.getString("konten_laporan"),
+                    rs.getInt("dibuat_oleh")
+                );
+                laporanList.add(laporan);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting all laporan: " + e.getMessage());
+        }
+        
+        return laporanList;
+    }
+    
+    // Method untuk mengambil laporan berdasarkan ID
+    public Laporan getLaporanById(int id) {
+        String selectSQL = "SELECT * FROM laporan WHERE id_laporan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, id);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Laporan(
+                        rs.getInt("id_laporan"),
+                        rs.getString("tipe_laporan"),
+                        new java.util.Date(rs.getTimestamp("periode_mulai").getTime()),
+                        new java.util.Date(rs.getTimestamp("periode_selesai").getTime()),
+                        new java.util.Date(rs.getTimestamp("tanggal_dibuat").getTime()),
+                        rs.getString("konten_laporan"),
+                        rs.getInt("dibuat_oleh")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting laporan by ID: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    // Method untuk mengambil laporan berdasarkan admin yang membuat
+    public List<Laporan> getLaporanByAdminId(int adminId) {
+        List<Laporan> laporanList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM laporan WHERE dibuat_oleh = ? ORDER BY tanggal_dibuat DESC";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, adminId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Laporan laporan = new Laporan(
+                        rs.getInt("id_laporan"),
+                        rs.getString("tipe_laporan"),
+                        new java.util.Date(rs.getTimestamp("periode_mulai").getTime()),
+                        new java.util.Date(rs.getTimestamp("periode_selesai").getTime()),
+                        new java.util.Date(rs.getTimestamp("tanggal_dibuat").getTime()),
+                        rs.getString("konten_laporan"),
+                        rs.getInt("dibuat_oleh")
+                    );
+                    laporanList.add(laporan);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting laporan by admin ID: " + e.getMessage());
+        }
+        
+        return laporanList;
+    }
+    
+    // Method untuk mengambil laporan dengan informasi admin yang membuat
+    public List<String> getLaporanWithAdminInfo() {
+        List<String> laporanInfoList = new ArrayList<>();
+        String selectSQL = """
+            SELECT l.id_laporan, l.tipe_laporan, l.periode_mulai, l.periode_selesai,
+                   l.tanggal_dibuat, l.konten_laporan, a.username as admin_username
+            FROM laporan l
+            JOIN admin a ON l.dibuat_oleh = a.ID
+            ORDER BY l.tanggal_dibuat DESC
+        """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                String laporanInfo = String.format(
+                    "Laporan ID: %d | Tipe: %s | Periode: %s s/d %s | Dibuat: %s | Admin: %s",
+                    rs.getInt("id_laporan"),
+                    rs.getString("tipe_laporan"),
+                    rs.getTimestamp("periode_mulai"),
+                    rs.getTimestamp("periode_selesai"),
+                    rs.getTimestamp("tanggal_dibuat"),
+                    rs.getString("admin_username")
+                );
+                laporanInfoList.add(laporanInfo);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting laporan with admin info: " + e.getMessage());
+        }
+        
+        return laporanInfoList;
+    }
+    
+    // Method untuk update laporan
+    public boolean updateLaporan(Laporan laporan) {
+        String updateSQL = """
+            UPDATE laporan SET tipe_laporan = ?, periode_mulai = ?, periode_selesai = ?,
+                             konten_laporan = ? WHERE id_laporan = ?
+        """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setString(1, laporan.getTipeLaporan());
+            stmt.setTimestamp(2, new Timestamp(laporan.getPeriodeMulai().getTime()));
+            stmt.setTimestamp(3, new Timestamp(laporan.getPeriodeSelesai().getTime()));
+            stmt.setString(4, laporan.getKontenLaporan());
+            stmt.setInt(5, laporan.getIdLaporan());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating laporan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus laporan
+    public boolean deleteLaporan(int id) {
+        String deleteSQL = "DELETE FROM laporan WHERE id_laporan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, id);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting laporan: " + e.getMessage());
+        }
+        return false;
     }
 }
