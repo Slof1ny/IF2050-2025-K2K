@@ -1,6 +1,5 @@
 package main.Model;
 import java.util.Date;
-import Model.Produk;
 
 public class Pesanan {
     private int idPesanan;

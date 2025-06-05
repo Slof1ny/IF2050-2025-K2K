@@ -1,6 +1,6 @@
-import java.util.Date;
-
 package main.Model;
+
+import java.util.Date;
 
 public class Laporan {
     private int idLaporan;

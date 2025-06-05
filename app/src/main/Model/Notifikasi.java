@@ -1,5 +1,7 @@
 package main.Model;
 
+import java.util.Date;
+
 public class Notifikasi {
     private int idNotif;
     private String isiPesan;

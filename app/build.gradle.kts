@@ -31,13 +31,38 @@ dependencies {
 // Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+// Configure source sets to use the existing directory structure
+sourceSets {
+    main {
+        java {
+            srcDirs("src/main")
+        }
     }
 }
 
 application {
     // Define the main class for the application.
     mainClass = "if2050.k2k.App"
+}
+
+// Task untuk menjalankan DatabaseResepExample
+tasks.register<JavaExec>("runResepExample") {
+    group = "application"
+    description = "Run DatabaseResepExample"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "main.Database.DatabaseResepExample"
+}
+
+// Task untuk menjalankan DatabaseInspector
+tasks.register<JavaExec>("runInspector") {
+    group = "application"
+    description = "Run DatabaseInspector to check raw database content"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "main.Database.DatabaseInspector"
 }
 
 tasks.named<Test>("test") {
