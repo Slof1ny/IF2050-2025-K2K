@@ -1,4 +1,4 @@
-package main.Database;
+package Database;
 
 public class DatabaseConfig {
     // SQLite database file path
