@@ -6,6 +6,7 @@ import Model.Dokter;
 import Model.JadwalPemeriksaan;
 import Model.Admin;
 import Model.Laporan;
+import Model.Notifikasi;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -93,8 +94,7 @@ public class Database {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """;
-        
-        // Tabel laporan dengan foreign key ke admin
+          // Tabel laporan dengan foreign key ke admin
         String createLaporanTableSQL = """
             CREATE TABLE IF NOT EXISTS laporan (
                 id_laporan INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,6 +107,19 @@ public class Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (dibuat_oleh) REFERENCES admin(ID) ON DELETE CASCADE
+            )
+        """;
+        
+        // Tabel notifikasi dengan foreign key ke pelanggan
+        String createNotifikasiTableSQL = """
+            CREATE TABLE IF NOT EXISTS notifikasi (
+                id_notif INTEGER PRIMARY KEY AUTOINCREMENT,
+                isi_pesan TEXT NOT NULL,
+                tanggal DATETIME DEFAULT CURRENT_TIMESTAMP,
+                id_pelanggan INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (id_pelanggan) REFERENCES pelanggan(id) ON DELETE CASCADE
             )
         """;
         
@@ -147,12 +160,19 @@ public class Database {
                 UPDATE admin SET updated_at = CURRENT_TIMESTAMP WHERE ID = NEW.ID;
             END
         """;
-        
-        String createLaporanTriggerSQL = """
+          String createLaporanTriggerSQL = """
             CREATE TRIGGER IF NOT EXISTS update_laporan_timestamp 
             AFTER UPDATE ON laporan
             BEGIN
                 UPDATE laporan SET updated_at = CURRENT_TIMESTAMP WHERE id_laporan = NEW.id_laporan;
+            END
+        """;
+        
+        String createNotifikasiTriggerSQL = """
+            CREATE TRIGGER IF NOT EXISTS update_notifikasi_timestamp 
+            AFTER UPDATE ON notifikasi
+            BEGIN
+                UPDATE notifikasi SET updated_at = CURRENT_TIMESTAMP WHERE id_notif = NEW.id_notif;
             END
         """;        try (Statement stmt = connection.createStatement()) {
             stmt.execute(createPelangganTableSQL);
@@ -161,13 +181,15 @@ public class Database {
             stmt.execute(createJadwalPemeriksaanTableSQL);
             stmt.execute(createAdminTableSQL);
             stmt.execute(createLaporanTableSQL);
+            stmt.execute(createNotifikasiTableSQL);
             stmt.execute(createPelangganTriggerSQL);
             stmt.execute(createResepTriggerSQL);
             stmt.execute(createDokterTriggerSQL);
             stmt.execute(createJadwalPemeriksaanTriggerSQL);
             stmt.execute(createAdminTriggerSQL);
             stmt.execute(createLaporanTriggerSQL);
-            System.out.println("Tables 'pelanggan', 'resep', 'dokter', 'jadwal_pemeriksaan', 'admin', 'laporan' with triggers created or already exist.");
+            stmt.execute(createNotifikasiTriggerSQL);
+            System.out.println("Tables 'pelanggan', 'resep', 'dokter', 'jadwal_pemeriksaan', 'admin', 'laporan', 'notifikasi' with triggers created or already exist.");
         } catch (SQLException e) {
             System.err.println("Error creating tables: " + e.getMessage());
         }
@@ -1229,8 +1251,7 @@ public class Database {
         }
         return false;
     }
-    
-    // Method untuk menghapus laporan
+      // Method untuk menghapus laporan
     public boolean deleteLaporan(int id) {
         String deleteSQL = "DELETE FROM laporan WHERE id_laporan = ?";
         
@@ -1243,5 +1264,236 @@ public class Database {
             System.err.println("Error deleting laporan: " + e.getMessage());
         }
         return false;
+    }
+    
+    // =================== NOTIFIKASI CRUD METHODS ===================
+    
+        // Method untuk menambah notifikasi baru
+    public boolean addNotifikasi(Notifikasi notifikasi) {
+        String insertSQL = "INSERT INTO notifikasi (isi_pesan, tanggal, id_pelanggan) VALUES (?, ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setString(1, notifikasi.getIsiPesan());
+            // Store date as ISO string instead of raw timestamp
+            stmt.setString(2, new java.sql.Timestamp(notifikasi.getTanggal().getTime()).toString());
+            stmt.setInt(3, notifikasi.getIdPelanggan());
+            
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                // Get the last inserted ID
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet rs = lastIdStmt.executeQuery()) {
+                    if (rs.next()) {
+                        notifikasi.setIdNotif(rs.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding notifikasi: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil semua notifikasi
+    public List<Notifikasi> getAllNotifikasi() {
+        List<Notifikasi> notifikasiList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM notifikasi ORDER BY tanggal DESC";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Notifikasi notifikasi = new Notifikasi(
+                    rs.getInt("id_notif"),
+                    rs.getString("isi_pesan"),
+                    new java.util.Date(rs.getTimestamp("tanggal").getTime()),
+                    rs.getInt("id_pelanggan")
+                );
+                notifikasiList.add(notifikasi);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting all notifikasi: " + e.getMessage());
+        }
+        
+        return notifikasiList;
+    }
+    
+    // Method untuk mengambil notifikasi berdasarkan ID
+    public Notifikasi getNotifikasiById(int idNotif) {
+        String selectSQL = "SELECT * FROM notifikasi WHERE id_notif = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idNotif);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Notifikasi(
+                        rs.getInt("id_notif"),
+                        rs.getString("isi_pesan"),
+                        new java.util.Date(rs.getTimestamp("tanggal").getTime()),
+                        rs.getInt("id_pelanggan")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting notifikasi by ID: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    // Method untuk mengambil notifikasi berdasarkan ID pelanggan
+    public List<Notifikasi> getNotifikasiByPelangganId(int idPelanggan) {
+        List<Notifikasi> notifikasiList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM notifikasi WHERE id_pelanggan = ? ORDER BY tanggal DESC";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idPelanggan);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Notifikasi notifikasi = new Notifikasi(
+                        rs.getInt("id_notif"),
+                        rs.getString("isi_pesan"),
+                        new java.util.Date(rs.getTimestamp("tanggal").getTime()),
+                        rs.getInt("id_pelanggan")
+                    );
+                    notifikasiList.add(notifikasi);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting notifikasi by pelanggan ID: " + e.getMessage());
+        }
+        
+        return notifikasiList;
+    }
+      // Method untuk mengupdate notifikasi
+    public boolean updateNotifikasi(Notifikasi notifikasi) {
+        String updateSQL = "UPDATE notifikasi SET isi_pesan = ?, tanggal = ? WHERE id_notif = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setString(1, notifikasi.getIsiPesan());
+            stmt.setString(2, new java.sql.Timestamp(notifikasi.getTanggal().getTime()).toString());
+            stmt.setInt(3, notifikasi.getIdNotif());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating notifikasi: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus notifikasi berdasarkan ID
+    public boolean deleteNotifikasi(int idNotif) {
+        String deleteSQL = "DELETE FROM notifikasi WHERE id_notif = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, idNotif);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting notifikasi: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mencari notifikasi berdasarkan isi pesan
+    public List<Notifikasi> searchNotifikasiByIsiPesan(String keyword) {
+        List<Notifikasi> notifikasiList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM notifikasi WHERE isi_pesan LIKE ? ORDER BY tanggal DESC";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setString(1, "%" + keyword + "%");
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Notifikasi notifikasi = new Notifikasi(
+                        rs.getInt("id_notif"),
+                        rs.getString("isi_pesan"),
+                        new java.util.Date(rs.getTimestamp("tanggal").getTime()),
+                        rs.getInt("id_pelanggan")
+                    );
+                    notifikasiList.add(notifikasi);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error searching notifikasi by isi pesan: " + e.getMessage());
+        }
+        
+        return notifikasiList;
+    }
+      // Method untuk mengambil notifikasi dengan informasi pelanggan (JOIN)
+    public List<String> getNotifikasiWithPelangganInfo() {
+        List<String> notifikasiInfoList = new ArrayList<>();
+        String selectSQL = """
+            SELECT n.id_notif, n.isi_pesan, n.tanggal, p.nama as pelanggan_nama, p.email as pelanggan_email
+            FROM notifikasi n
+            JOIN pelanggan p ON n.id_pelanggan = p.id
+            ORDER BY n.tanggal DESC
+        """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            // Import SimpleDateFormat untuk format tanggal yang lebih baik
+            java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+            
+            while (rs.next()) {
+                // Format tanggal dengan SimpleDateFormat
+                String formattedDate = formatter.format(rs.getTimestamp("tanggal"));
+                
+                String notifikasiInfo = String.format(
+                    "Notifikasi ID: %d | Pesan: %s | Tanggal: %s | Pelanggan: %s (%s)",
+                    rs.getInt("id_notif"),
+                    rs.getString("isi_pesan"),
+                    formattedDate,
+                    rs.getString("pelanggan_nama"),
+                    rs.getString("pelanggan_email")
+                );
+                notifikasiInfoList.add(notifikasiInfo);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting notifikasi with pelanggan info: " + e.getMessage());
+        }
+        
+        return notifikasiInfoList;
+    }
+    
+    // Method untuk menghitung total notifikasi
+    public int getTotalNotifikasi() {
+        String countSQL = "SELECT COUNT(*) as total FROM notifikasi";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(countSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt("total");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error counting notifikasi: " + e.getMessage());
+        }
+        return 0;
+    }
+    
+    // Method untuk menghitung total notifikasi berdasarkan pelanggan
+    public int getTotalNotifikasiByPelanggan(int idPelanggan) {
+        String countSQL = "SELECT COUNT(*) as total FROM notifikasi WHERE id_pelanggan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(countSQL)) {
+            stmt.setInt(1, idPelanggan);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("total");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error counting notifikasi by pelanggan: " + e.getMessage());
+        }
+        return 0;
     }
 }

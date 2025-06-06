@@ -89,6 +89,78 @@ tasks.register<JavaExec>("runDokterCleanup") {
     mainClass = "main.Database.DokterCleanup"
 }
 
+// Task untuk menjalankan Notifikasi Test
+tasks.register<JavaExec>("runNotifikasiTest") {
+    group = "application"
+    description = "Run NotifikasiTest to test notification functionality"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.NotifikasiTest"
+}
+
+// Task untuk menjalankan Comprehensive Notifikasi Example
+tasks.register<JavaExec>("runNotifikasiExample") {
+    group = "application"
+    description = "Run comprehensive NotifikasiExample to demonstrate all CRUD operations"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.DatabaseNotifikasiExample"
+}
+
+// Task untuk menambahkan data contoh notifikasi
+tasks.register<JavaExec>("seedNotifikasiData") {
+    group = "application"
+    description = "Add sample notification data to the database"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.NotifikasiDataSeeder"
+}
+
+// Task untuk menambah data notifikasi
+tasks.register<JavaExec>("addNotifikasiData") {
+    group = "application"
+    description = "Add notification data to database"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.AddNotifikasiData"
+}
+
+// Task untuk melihat data notifikasi
+tasks.register<JavaExec>("runViewNotifikasiData") {
+    group = "application"
+    description = "View notification data from database"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.ViewNotifikasiData"
+}
+
+// Task untuk demo format tanggal notifikasi
+tasks.register<JavaExec>("runDateFormatDemo") {
+    group = "application"
+    description = "Demonstrate notification date format improvements"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.NotifikasiDateFormatDemo"
+}
+
+// Task untuk demo format tanggal sederhana
+tasks.register<JavaExec>("runSimpleDemo") {
+    group = "application"
+    description = "Simple demo of date format fix"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.SimpleFormatDemo"
+}
+
+// Task untuk memperbaiki format tanggal notifikasi
+tasks.register<JavaExec>("fixNotifikasiDate") {
+    group = "application"
+    description = "Fix notification date format in database from epoch milliseconds to readable datetime"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.NotifikasiDateConverter"
+}
+
+// Task untuk menguji format tanggal notifikasi
+tasks.register<JavaExec>("testNotifikasiDate") {
+    group = "application"
+    description = "Test notification date format in database"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.TestNotifikasiDate"
+}
+
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()

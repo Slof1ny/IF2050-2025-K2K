@@ -9,13 +9,12 @@ public class ComprehensiveTest {
         System.out.println("=== COMPREHENSIVE DATABASE TEST ===");
         
         Database db = new Database();
-        
-        if (!db.isConnected()) {
-            System.out.println("❌ Failed to connect to database!");
+          if (!db.isConnected()) {
+            System.out.println("X Failed to connect to database!");
             return;
         }
         
-        System.out.println("✅ Database connected successfully!\n");
+        System.out.println("✓ Database connected successfully!\n");
         
         // Test 1: Admin Operations
         testAdminOperations(db);
@@ -41,7 +40,7 @@ public class ComprehensiveTest {
         if (loginResult != null) {
             System.out.println("✅ Admin login successful: " + loginResult.getUsername());
         } else {
-            System.out.println("❌ Admin login failed");
+            System.out.println("X Admin login failed");
         }
         
         // Test admin creation
@@ -70,7 +69,7 @@ public class ComprehensiveTest {
         // Get an admin to create laporan
         List<Admin> admins = db.getAllAdmin();
         if (admins.isEmpty()) {
-            System.out.println("❌ No admin found for laporan test");
+            System.out.println("X No admin found for laporan test");
             return;
         }
         
