@@ -161,6 +161,31 @@ tasks.register<JavaExec>("testNotifikasiDate") {
     mainClass = "Database.TestNotifikasiDate"
 }
 
+// Task untuk membuat tabel pesanan dan produk
+tasks.register<JavaExec>("createOrderTables") {
+    group = "application"
+    description = "Create product, order and order detail tables in the database"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Database.CreateOrderTables"
+}
+
+// Task untuk menguji sistem pesanan
+tasks.register<JavaExec>("testOrderSystem") {
+    group = "application"
+    description = "Test the order system functionality"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Main.TestOrderSystem"
+}
+
+// Task untuk menjalankan demo sistem pesanan
+tasks.register<JavaExec>("runOrderDemo") {
+    group = "application"
+    description = "Run the interactive order system demo"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Main.OrderSystemDemo"
+    standardInput = System.`in`
+}
+
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()

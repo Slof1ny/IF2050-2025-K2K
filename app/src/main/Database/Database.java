@@ -7,9 +7,14 @@ import Model.JadwalPemeriksaan;
 import Model.Admin;
 import Model.Laporan;
 import Model.Notifikasi;
+import Model.Produk;
+import Model.Pesanan;
+import Model.DetailPesanan;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Database {
     private static final String URL = "jdbc:sqlite:user.db";
@@ -123,6 +128,46 @@ public class Database {
             )
         """;
         
+        // Tabel produk
+        String createProdukTableSQL = """
+            CREATE TABLE IF NOT EXISTS produk (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nama TEXT NOT NULL,
+                harga REAL NOT NULL,
+                stok INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """;
+        
+        // Tabel pesanan dengan foreign key ke pelanggan
+        String createPesananTableSQL = """
+            CREATE TABLE IF NOT EXISTS pesanan (
+                id_pesanan INTEGER PRIMARY KEY AUTOINCREMENT,
+                tanggal DATETIME DEFAULT CURRENT_TIMESTAMP,
+                status TEXT NOT NULL,
+                id_pelanggan INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (id_pelanggan) REFERENCES pelanggan(id) ON DELETE CASCADE
+            )
+        """;
+        
+        // Tabel detail_pesanan dengan foreign key ke pesanan dan produk
+        String createDetailPesananTableSQL = """
+            CREATE TABLE IF NOT EXISTS detail_pesanan (
+                id_detail INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_pesanan INTEGER NOT NULL,
+                id_produk INTEGER NOT NULL,
+                kuantitas INTEGER NOT NULL,
+                total_harga REAL NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (id_pesanan) REFERENCES pesanan(id_pesanan) ON DELETE CASCADE,
+                FOREIGN KEY (id_produk) REFERENCES produk(id) ON DELETE CASCADE
+            )
+        """;
+        
         String createPelangganTriggerSQL = """
             CREATE TRIGGER IF NOT EXISTS update_pelanggan_timestamp 
             AFTER UPDATE ON pelanggan
@@ -182,6 +227,9 @@ public class Database {
             stmt.execute(createAdminTableSQL);
             stmt.execute(createLaporanTableSQL);
             stmt.execute(createNotifikasiTableSQL);
+            stmt.execute(createProdukTableSQL);
+            stmt.execute(createPesananTableSQL);
+            stmt.execute(createDetailPesananTableSQL);
             stmt.execute(createPelangganTriggerSQL);
             stmt.execute(createResepTriggerSQL);
             stmt.execute(createDokterTriggerSQL);
@@ -189,7 +237,7 @@ public class Database {
             stmt.execute(createAdminTriggerSQL);
             stmt.execute(createLaporanTriggerSQL);
             stmt.execute(createNotifikasiTriggerSQL);
-            System.out.println("Tables 'pelanggan', 'resep', 'dokter', 'jadwal_pemeriksaan', 'admin', 'laporan', 'notifikasi' with triggers created or already exist.");
+            System.out.println("Tables 'pelanggan', 'resep', 'dokter', 'jadwal_pemeriksaan', 'admin', 'laporan', 'notifikasi', 'produk', 'pesanan', 'detail_pesanan' with triggers created or already exist.");
         } catch (SQLException e) {
             System.err.println("Error creating tables: " + e.getMessage());
         }
@@ -1495,5 +1543,450 @@ public class Database {
             System.err.println("Error counting notifikasi by pelanggan: " + e.getMessage());
         }
         return 0;
+    }
+    
+    // =================== PRODUK CRUD METHODS ===================
+    
+    // Method untuk menambah produk baru
+    public boolean addProduk(Produk produk) {
+        String insertSQL = "INSERT INTO produk (nama, harga, stok) VALUES (?, ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setString(1, produk.getNama());
+            stmt.setDouble(2, produk.getHarga());
+            stmt.setInt(3, produk.getStok());
+            
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                // Get the last inserted ID
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet rs = lastIdStmt.executeQuery()) {
+                    if (rs.next()) {
+                        produk.setId(rs.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding produk: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil semua data produk
+    public List<Produk> getAllProduk() {
+        List<Produk> produkList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM produk ORDER BY id";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Produk produk = new Produk(
+                    rs.getInt("id"),
+                    rs.getString("nama"),
+                    rs.getDouble("harga"),
+                    rs.getInt("stok")
+                );
+                produkList.add(produk);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting all produk: " + e.getMessage());
+        }
+        
+        return produkList;
+    }
+    
+    // Method untuk mengambil produk berdasarkan ID
+    public Produk getProdukById(int id) {
+        String selectSQL = "SELECT * FROM produk WHERE id = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                return new Produk(
+                    rs.getInt("id"),
+                    rs.getString("nama"),
+                    rs.getDouble("harga"),
+                    rs.getInt("stok")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting produk by ID: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    // Method untuk mengupdate data produk
+    public boolean updateProduk(Produk produk) {
+        String updateSQL = "UPDATE produk SET nama = ?, harga = ?, stok = ? WHERE id = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setString(1, produk.getNama());
+            stmt.setDouble(2, produk.getHarga());
+            stmt.setInt(3, produk.getStok());
+            stmt.setInt(4, produk.getId());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating produk: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus produk berdasarkan ID
+    public boolean deleteProduk(int id) {
+        String deleteSQL = "DELETE FROM produk WHERE id = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, id);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting produk: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mencari produk berdasarkan nama
+    public List<Produk> searchProdukByNama(String nama) {
+        List<Produk> produkList = new ArrayList<>();
+        String searchSQL = "SELECT * FROM produk WHERE nama LIKE ? ORDER BY nama";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(searchSQL)) {
+            stmt.setString(1, "%" + nama + "%");
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                Produk produk = new Produk(
+                    rs.getInt("id"),
+                    rs.getString("nama"),
+                    rs.getDouble("harga"),
+                    rs.getInt("stok")
+                );
+                produkList.add(produk);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error searching produk by nama: " + e.getMessage());
+        }
+        
+        return produkList;
+    }
+    
+    // =================== PESANAN CRUD METHODS ===================
+      // Method untuk menambah pesanan baru
+    public boolean addPesanan(Pesanan pesanan) {
+        String insertSQL = "INSERT INTO pesanan (tanggal, status, id_pelanggan) VALUES (?, ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            // Use proper timestamp format instead of milliseconds
+            stmt.setTimestamp(1, new Timestamp(pesanan.getTanggal().getTime()));
+            stmt.setString(2, pesanan.getStatus());
+            stmt.setInt(3, pesanan.getIdPelanggan());
+            
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                // Get the last inserted ID
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet rs = lastIdStmt.executeQuery()) {
+                    if (rs.next()) {
+                        pesanan.setIdPesanan(rs.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding pesanan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil semua data pesanan
+    public List<Pesanan> getAllPesanan() {
+        List<Pesanan> pesananList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM pesanan ORDER BY tanggal DESC";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Pesanan pesanan = new Pesanan(
+                    rs.getInt("id_pesanan"),
+                    rs.getString("status"),
+                    rs.getTimestamp("tanggal"),
+                    rs.getInt("id_pelanggan")
+                );
+                pesananList.add(pesanan);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting all pesanan: " + e.getMessage());
+        }
+        
+        return pesananList;
+    }
+    
+    // Method untuk mengambil pesanan berdasarkan ID
+    public Pesanan getPesananById(int idPesanan) {
+        String selectSQL = "SELECT * FROM pesanan WHERE id_pesanan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idPesanan);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                return new Pesanan(
+                    rs.getInt("id_pesanan"),
+                    rs.getString("status"),
+                    rs.getTimestamp("tanggal"),
+                    rs.getInt("id_pelanggan")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting pesanan by ID: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    // Method untuk mengambil pesanan berdasarkan ID pelanggan
+    public List<Pesanan> getPesananByPelangganId(int idPelanggan) {
+        List<Pesanan> pesananList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM pesanan WHERE id_pelanggan = ? ORDER BY tanggal DESC";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idPelanggan);
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                Pesanan pesanan = new Pesanan(
+                    rs.getInt("id_pesanan"),
+                    rs.getString("status"),
+                    rs.getTimestamp("tanggal"),
+                    rs.getInt("id_pelanggan")
+                );
+                pesananList.add(pesanan);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting pesanan by pelanggan ID: " + e.getMessage());
+        }
+        
+        return pesananList;
+    }
+      // Method untuk mengupdate pesanan
+    public boolean updatePesanan(Pesanan pesanan) {
+        String updateSQL = "UPDATE pesanan SET tanggal = ?, status = ?, id_pelanggan = ? WHERE id_pesanan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            // Use proper timestamp format instead of milliseconds
+            stmt.setTimestamp(1, new Timestamp(pesanan.getTanggal().getTime()));
+            stmt.setString(2, pesanan.getStatus());
+            stmt.setInt(3, pesanan.getIdPelanggan());
+            stmt.setInt(4, pesanan.getIdPesanan());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating pesanan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus pesanan berdasarkan ID
+    public boolean deletePesanan(int idPesanan) {
+        String deleteSQL = "DELETE FROM pesanan WHERE id_pesanan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, idPesanan);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting pesanan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // =================== DETAIL PESANAN CRUD METHODS ===================
+    
+    // Method untuk menambah detail pesanan baru
+    public boolean addDetailPesanan(DetailPesanan detailPesanan) {
+        String insertSQL = "INSERT INTO detail_pesanan (id_pesanan, id_produk, kuantitas, total_harga) VALUES (?, ?, ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setInt(1, detailPesanan.getIdPesanan());
+            stmt.setInt(2, detailPesanan.getIdProduk());
+            stmt.setInt(3, detailPesanan.getKuantitas());
+            stmt.setDouble(4, detailPesanan.getTotalHarga());
+            
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                // Get the last inserted ID
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet rs = lastIdStmt.executeQuery()) {
+                    if (rs.next()) {
+                        detailPesanan.setIdDetail(rs.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error adding detail pesanan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil semua detail pesanan berdasarkan ID pesanan
+    public List<DetailPesanan> getDetailPesananByPesananId(int idPesanan) {
+        List<DetailPesanan> detailList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM detail_pesanan WHERE id_pesanan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idPesanan);
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                DetailPesanan detail = new DetailPesanan(
+                    rs.getInt("id_detail"),
+                    rs.getInt("id_pesanan"),
+                    rs.getInt("id_produk"),
+                    rs.getInt("kuantitas"),
+                    rs.getDouble("total_harga")
+                );
+                detailList.add(detail);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting detail pesanan by pesanan ID: " + e.getMessage());
+        }
+        
+        return detailList;
+    }
+    
+    // Method untuk mengambil detail pesanan berdasarkan ID detail
+    public DetailPesanan getDetailPesananById(int idDetail) {
+        String selectSQL = "SELECT * FROM detail_pesanan WHERE id_detail = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idDetail);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                return new DetailPesanan(
+                    rs.getInt("id_detail"),
+                    rs.getInt("id_pesanan"),
+                    rs.getInt("id_produk"),
+                    rs.getInt("kuantitas"),
+                    rs.getDouble("total_harga")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting detail pesanan by ID: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    // Method untuk mengupdate detail pesanan
+    public boolean updateDetailPesanan(DetailPesanan detailPesanan) {
+        String updateSQL = "UPDATE detail_pesanan SET id_pesanan = ?, id_produk = ?, kuantitas = ?, total_harga = ? WHERE id_detail = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setInt(1, detailPesanan.getIdPesanan());
+            stmt.setInt(2, detailPesanan.getIdProduk());
+            stmt.setInt(3, detailPesanan.getKuantitas());
+            stmt.setDouble(4, detailPesanan.getTotalHarga());
+            stmt.setInt(5, detailPesanan.getIdDetail());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating detail pesanan: " + e.getMessage());
+        }
+        return false;
+    }
+      // Method untuk menghapus detail pesanan berdasarkan ID
+    public boolean deleteDetailPesanan(int idDetail) {
+        String deleteSQL = "DELETE FROM detail_pesanan WHERE id_detail = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, idDetail);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting detail pesanan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus semua detail pesanan dari sebuah pesanan
+    public boolean deleteAllDetailsByPesananId(int idPesanan) {
+        String deleteSQL = "DELETE FROM detail_pesanan WHERE id_pesanan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, idPesanan);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting all details by pesanan ID: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengeksekusi raw SQL UPDATE, DELETE, atau INSERT
+    public boolean executeRawUpdate(String sql) {
+        try (Statement stmt = connection.createStatement()) {
+            int rowsAffected = stmt.executeUpdate(sql);
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error executing raw SQL update: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil informasi lengkap pesanan dengan detail dan produk
+    public List<Map<String, Object>> getPesananLengkap(int idPesanan) {
+        List<Map<String, Object>> detailList = new ArrayList<>();
+        String selectSQL = """
+            SELECT dp.id_detail, dp.id_pesanan, dp.id_produk, dp.kuantitas, dp.total_harga,
+                   p.nama as nama_produk, p.harga as harga_produk, p.stok as stok_produk
+            FROM detail_pesanan dp
+            JOIN produk p ON dp.id_produk = p.id
+            WHERE dp.id_pesanan = ?
+        """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idPesanan);
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                Map<String, Object> detailMap = new HashMap<>();
+                detailMap.put("id_detail", rs.getInt("id_detail"));
+                detailMap.put("id_pesanan", rs.getInt("id_pesanan"));
+                detailMap.put("id_produk", rs.getInt("id_produk"));
+                detailMap.put("kuantitas", rs.getInt("kuantitas"));
+                detailMap.put("total_harga", rs.getDouble("total_harga"));
+                detailMap.put("nama_produk", rs.getString("nama_produk"));
+                detailMap.put("harga_produk", rs.getDouble("harga_produk"));
+                detailMap.put("stok_produk", rs.getInt("stok_produk"));
+                
+                detailList.add(detailMap);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting pesanan lengkap: " + e.getMessage());
+        }
+        
+        return detailList;
     }
 }
