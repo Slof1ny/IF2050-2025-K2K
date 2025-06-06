@@ -6,12 +6,14 @@ public class Notifikasi {
     private int idNotif;
     private String isiPesan;
     private Date tanggal;
+    private int idPelanggan;
 
 
-    public Notifikasi(int idNotif, String isiPesan, Date tanggal) {
+    public Notifikasi(int idNotif, String isiPesan, Date tanggal, int idPelanggan) {
         this.idNotif = idNotif;
         this.isiPesan = isiPesan;
         this.tanggal = tanggal;
+        this.idPelanggan = idPelanggan; 
     }
 
     public int getIdNotif() {
@@ -36,5 +38,11 @@ public class Notifikasi {
 
     public void setTanggal(Date tanggal) {
         this.tanggal = tanggal;
+    }
+    public int getIdPelanggan() {
+        return idPelanggan;
+    }
+    public void setIdPelanggan(int idPelanggan) {
+        this.idPelanggan = idPelanggan;
     }
 }

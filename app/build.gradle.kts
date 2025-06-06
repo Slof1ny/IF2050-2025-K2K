@@ -46,7 +46,7 @@ sourceSets {
 
 application {
     // Define the main class for the application.
-    mainClass = "main.Database.DatabaseInspector"
+    mainClass = "Database.DatabaseTest"
 }
 
 // Task untuk menjalankan DatabaseResepExample

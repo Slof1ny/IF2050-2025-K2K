@@ -1,11 +1,11 @@
-package main.Database;
+package Database;
 
-import main.Model.Pelanggan;
-import main.Model.Resep;
-import main.Model.Dokter;
-import main.Model.JadwalPemeriksaan;
-import main.Model.Admin;
-import main.Model.Laporan;
+import Model.Pelanggan;
+import Model.Resep;
+import Model.Dokter;
+import Model.JadwalPemeriksaan;
+import Model.Admin;
+import Model.Laporan;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;

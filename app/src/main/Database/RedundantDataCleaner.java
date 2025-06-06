@@ -145,7 +145,7 @@
 //                         checkStmt.setInt(1, secondId);
 //                         try (ResultSet checkRs = checkStmt.executeQuery()) {
 //                             if (checkRs.next() && checkRs.getInt("count") > 0) {
-//                                 System.out.println("  ⚠️  ID " + secondId + " direferensikan di jadwal_pemeriksaan");
+//                                 System.out.println("  WARNING  ID " + secondId + " direferensikan di jadwal_pemeriksaan");
 //                                 System.out.println("  Memperbarui referensi ke ID " + firstId + "...");
                                 
 //                                 // Update referensi dari secondId ke firstId
@@ -205,7 +205,7 @@
 //             if (rs.next()) {
 //                 int brokenRefs = rs.getInt("broken_refs");
 //                 if (brokenRefs > 0) {
-//                     System.out.println("⚠️  " + brokenRefs + " broken references jadwal_pemeriksaan -> dokter");
+//                     System.out.println("WARNING  " + brokenRefs + " broken references jadwal_pemeriksaan -> dokter");
 //                 } else {
 //                     System.out.println("✅ Referential integrity jadwal_pemeriksaan -> dokter: OK");
 //                 }
@@ -226,7 +226,7 @@
 //             if (rs.next()) {
 //                 int brokenRefs = rs.getInt("broken_refs");
 //                 if (brokenRefs > 0) {
-//                     System.out.println("⚠️  " + brokenRefs + " broken references laporan -> admin");
+//                     System.out.println("WARNING  " + brokenRefs + " broken references laporan -> admin");
 //                 } else {
 //                     System.out.println("✅ Referential integrity laporan -> admin: OK");
 //                 }

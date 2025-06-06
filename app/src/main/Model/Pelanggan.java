@@ -1,4 +1,4 @@
-package main.Model;
+package Model;
 public class Pelanggan {
     private int id;
     private String nama;
