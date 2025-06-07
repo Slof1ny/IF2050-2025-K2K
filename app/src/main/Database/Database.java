@@ -73,7 +73,7 @@ public class Database {
             CREATE TABLE IF NOT EXISTS jadwal_pemeriksaan (
                 id_jadwal INTEGER PRIMARY KEY AUTOINCREMENT,
                 tanggal_waktu DATETIME NOT NULL,
-                id_pasien INTEGER NOT NULL,
+                id_pasien INTEGER,
                 id_dokter INTEGER NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
