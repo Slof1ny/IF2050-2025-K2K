@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.collections.FXCollections?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import java.lang.String?>
+
+<HBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controller.LoginController" stylesheets="/css/login-style.css">
+   <children>
+      <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS" maxWidth="500.0" prefWidth="500.0" spacing="10.0" styleClass="form-pane">
+         <padding>
+            <Insets bottom="50.0" left="50.0" right="50.0" top="50.0" />
+         </padding>
+         <children>
+            <Label styleClass="header-label" text="Sign in to TemuOptic" />
+            <Hyperlink text="Or create a new account" />
+            
+            <Label styleClass="input-label" text="Email address" />
+            <TextField fx:id="emailField" promptText="you@example.com" />
+            
+            <Label styleClass="input-label" text="Password" />
+            <PasswordField fx:id="passwordField" />
+            
+            <HBox alignment="CENTER_LEFT" spacing="5.0">
+               <children>
+                  <CheckBox fx:id="rememberMeCheck" mnemonicParsing="false" text="Remember me" />
+                  <HBox alignment="CENTER_RIGHT" HBox.hgrow="ALWAYS">
+                     <children>
+                        <Hyperlink text="Forgot your password?" />
+                     </children>
+                  </HBox>
+               </children>
+            </HBox>
+            
+            <Label styleClass="input-label" text="Sign in as" />
+            <ComboBox fx:id="roleDropdown" prefWidth="Infinity" promptText="Select your role">
+                <items>
+                    <FXCollections fx:factory="observableArrayList">
+                        <String fx:value="Customer" />
+                        <String fx:value="Doctor" />
+                        <String fx:value="Admin" />
+                    </FXCollections>
+                </items>
+            </ComboBox>
+
+            <Button fx:id="signInButton" onAction="#handleSignIn" text="Sign in" />
+         </children>
+      </VBox>
+      
+      <StackPane HBox.hgrow="ALWAYS" styleClass="image-pane">
+         <children>
+            <Label styleClass="image-placeholder-text" text="Gambar Klinik Anda di Sini" />
+         </children>
+      </StackPane>
+   </children>
+</HBox>

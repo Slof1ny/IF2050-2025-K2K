@@ -6,47 +6,46 @@
  */
 
 plugins {
-    // Apply the application plugin to add support for building a CLI application in Java.
     application
+    id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
 repositories {
-    // Use Maven Central for resolving dependencies.
     mavenCentral()
 }
 
 dependencies {
-    // Use JUnit Jupiter for testing.
     testImplementation(libs.junit.jupiter)
-
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
-    // This dependency is used by the application.
     implementation(libs.guava)
-    
-    // SQLite JDBC Driver
     implementation("org.xerial:sqlite-jdbc:3.43.0.0")
 }
 
-// Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
-// Configure source sets to use the existing directory structure
+javafx {
+    version = "17"
+    modules = listOf("javafx.controls", "javafx.fxml")
+}
+
+// Menggunakan konfigurasi standar yang bersih
 sourceSets {
     main {
         java {
-            srcDirs("src/main")
+            srcDirs("src/main/java")
+        }
+        resources {
+            srcDirs("src/main/resources")
         }
     }
 }
 
 application {
-    // Define the main class for the application.
-    mainClass = "Database.DatabaseTest"
+    mainClass = "MainApplication"
 }
 
 // Task untuk menjalankan DatabaseResepExample
@@ -187,6 +186,10 @@ tasks.register<JavaExec>("runOrderDemo") {
 }
 
 tasks.named<Test>("test") {
-    // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+}
+
+// BLOK BARU DI SINI: Mengatasi error duplikat
+tasks.withType<Copy> {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

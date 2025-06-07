@@ -1,0 +1,80 @@
+/* Mengatur font dasar untuk seluruh aplikasi */
+.root {
+    -fx-font-family: 'Inter', 'Arial', sans-serif;
+}
+
+.form-pane {
+    -fx-background-color: #ffffff;
+    -fx-padding: 50;
+}
+
+/* Panel Kanan (Gambar) dengan warna gradien */
+.image-pane {
+    -fx-background-color: linear-gradient(from 0% 0% to 100% 100%, #4facfe, #00f2fe);
+}
+
+.image-placeholder-text {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 2);
+}
+
+/* Styling Kolom Input dan Dropdown */
+.text-field, .password-field, .combo-box {
+    -fx-pref-height: 45px;
+    -fx-font-size: 14px;
+    -fx-border-color: #bdc3c7;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+}
+
+.text-field:focused, .password-field:focused, .combo-box:focused {
+    -fx-border-color: #3498db;
+    -fx-border-width: 2px;
+}
+
+/* Tombol Sign In dengan Efek Eye-Catching */
+#signInButton {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-pref-height: 50px;
+    -fx-pref-width: Infinity;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 3);
+}
+
+#signInButton:hover {
+    -fx-background-color: #2980b9;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 15, 0, 0, 5);
+    -fx-translate-y: -2px; 
+}
+
+.check-box .box {
+    -fx-border-radius: 4px;
+}
+
+.hyperlink {
+    -fx-text-fill: #3498db;
+}
+
+.hyperlink:hover {
+    -fx-underline: true;
+}
+
+.header-label {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.input-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-text-fill: #34495e;
+    -fx-padding: 10px 0 0 0;
+}
