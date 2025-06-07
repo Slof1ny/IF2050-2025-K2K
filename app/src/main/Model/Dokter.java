@@ -4,11 +4,13 @@ public class Dokter {
     private String nama;
     private String spesialisasi;
     private int id;
+    private String password;
 
-    public Dokter(String nama, String spesialisasi, int id) {
+    public Dokter(String nama, String spesialisasi, int id, String password) {
         this.nama = nama;
         this.spesialisasi = spesialisasi;
         this.id = id;
+        this.password = password;
         // Constructor for Dokter class
     }
 
@@ -34,6 +36,18 @@ public class Dokter {
 
     public void setId(int id) {
         this.id = id;
+    }
+    
+    public String getPassword() {
+        return password;
+    }
+    
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    
+    public boolean login(String id, String password) {
+        return String.valueOf(this.id).equals(id) && this.password.equals(password);
     }
 
     @Override

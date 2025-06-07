@@ -4,12 +4,14 @@ public class Pelanggan {
     private String nama;
     private String email;
     private String noHp;
+    private String password;
 
-    public Pelanggan(int id, String nama, String email, String noHp) {
+    public Pelanggan(int id, String nama, String email, String noHp, String password) {
         this.id = id;
         this.nama = nama;
         this.email = email;
         this.noHp = noHp;
+        this.password = password;
     }
 
     public int getId() {
@@ -42,5 +44,17 @@ public class Pelanggan {
 
     public void setnoHp(String noHp) {
         this.noHp = noHp;
+    }
+    
+    public String getPassword() {
+        return password;
+    }
+    
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    
+    public boolean login(String email, String password) {
+        return this.email.equals(email) && this.password.equals(password);
     }
 }
