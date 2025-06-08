@@ -8,66 +8,81 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.collections.FXCollections?>
-<?import java.lang.String?>
 
-
-<StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controller.LoginController">
+<StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controller.LoginController"            
+           stylesheets="/css/login-style.css" 
+           prefHeight="600.0" prefWidth="1000.0">
     <children>
-        <HBox fx:id="mainContainer" stylesheets="/css/login-style.css">
-            <children>
-                <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS" maxWidth="500.0" prefWidth="500.0" spacing="10.0" styleClass="form-pane">
-                    <padding>
-                        <Insets bottom="50.0" left="50.0" right="50.0" top="50.0" />
-                    </padding>
-                    <children>
-                        <Label styleClass="header-label" text="Sign in to TemuOptic" />
-                        <Hyperlink text="Or create a new account" />
+        <HBox>
+            <!-- PANEL KIRI (FORM) -->
+            <VBox HBox.hgrow="ALWAYS" alignment="CENTER" maxWidth="500.0" prefWidth="500.0" styleClass="form-pane">
+                <children>
+                    <VBox alignment="CENTER_LEFT" maxWidth="400.0" spacing="5.0" styleClass="login-card">
+                        <padding>
+                            <Insets top="40" right="40" bottom="40" left="40" />
+                        </padding>
+                        <children>
+                            <Label styleClass="header-label" text="Sign in to Optik XYZ" />
+                            <Hyperlink text="Or create a new account">
+                                <!-- DIUBAH: Margin dipindahkan ke dalam elemen Hyperlink -->
+                                <VBox.margin>
+                                    <Insets bottom="10.0" />
+                                </VBox.margin>
+                            </Hyperlink>
 
-                        <Label styleClass="input-label" text="Nama" />
-                        <TextField fx:id="nameField" promptText="Masukkan nama Anda" />
+                            <Label styleClass="input-label" text="Nama" />
+                            <TextField fx:id="nameField" promptText="Masukkan nama Anda" />
 
-                        <Label styleClass="input-label" text="Password" />
-                        <PasswordField fx:id="passwordField" />
+                            <Label styleClass="input-label" text="Password" />
+                            <PasswordField fx:id="passwordField" />
 
-                        <HBox alignment="CENTER_LEFT" spacing="5.0">
-                            <children>
-                                <CheckBox fx:id="rememberMeCheck" mnemonicParsing="false" text="Remember me" />
-                                <HBox alignment="CENTER_RIGHT" HBox.hgrow="ALWAYS">
-                                    <children>
-                                        <Hyperlink fx:id="forgotPasswordLink" onAction="#handleForgotPassword" text="Forgot your password?" />
-                                    </children>
-                                </HBox>
-                            </children>
-                        </HBox>
+                            <HBox alignment="CENTER" spacing="5.0">
+                                <children>
+                                    <CheckBox fx:id="rememberMeCheck" mnemonicParsing="false" text="Remember me" />
+                                    <HBox alignment="CENTER_RIGHT" HBox.hgrow="ALWAYS">
+                                        <children>
+                                            <Hyperlink fx:id="forgotPasswordLink" onAction="#handleForgotPassword" text="Forgot your password?" />
+                                        </children>
+                                    </HBox>
+                                </children>
+                                <!-- DIUBAH: Margin dipindahkan ke dalam elemen HBox -->
+                                <VBox.margin>
+                                    <Insets top="10.0" />
+                                </VBox.margin>
+                            </HBox>
 
-                        <Label styleClass="input-label" text="Sign in as" />
-                        <ComboBox fx:id="roleDropdown" prefWidth="Infinity" promptText="Select your role">
-                            <items>
-                                <FXCollections fx:factory="observableArrayList">
-                                    <String fx:value="Customer" />
-                                    <String fx:value="Doctor" />
-                                    <String fx:value="Admin" />
-                                </FXCollections>
-                            </items>
-                        </ComboBox>
+                            <Label styleClass="input-label" text="Sign in as" />
+                            <ComboBox fx:id="roleDropdown" promptText="Select your role" />
 
-                        <Button fx:id="signInButton" onAction="#handleSignIn" text="Sign in" />
-                    </children>
-                </VBox>
+                            <Button fx:id="signInButton" onAction="#handleSignIn" text="Sign in">
+                                <VBox.margin>
+                                    <Insets top="20.0" />
+                                </VBox.margin>
+                            </Button>
+                        </children>
+                    </VBox>
+                </children>
+            </VBox>
 
-                <StackPane HBox.hgrow="ALWAYS" styleClass="image-pane">
-                    <children>
-                        <Label styleClass="image-placeholder-text" text="Gambar Klinik Anda di Sini" />
-                    </children>
-                </StackPane>
-            </children>
+            <!-- PANEL KANAN (GAMBAR) -->
+            <StackPane HBox.hgrow="ALWAYS" styleClass="image-pane">
+                <children>
+                    <ImageView fx:id="clinicImageView" fitHeight="600.0" fitWidth="500.0" pickOnBounds="true" preserveRatio="false">
+                        <image>
+                            <!-- Pastikan gambar ini ada di src/main/resources/image/ -->
+                            <Image url="/image/KlinikMata.jpg" />
+                        </image>
+                    </ImageView>
+                </children>
+            </StackPane>
         </HBox>
 
+        <!-- Elemen untuk notifikasi pop-up -->
         <Label fx:id="notificationLabel" alignment="CENTER" managed="false" style="-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 0 0 10 10; -fx-font-size: 14;" visible="false" StackPane.alignment="TOP_CENTER" />
-
     </children>
 </StackPane>
