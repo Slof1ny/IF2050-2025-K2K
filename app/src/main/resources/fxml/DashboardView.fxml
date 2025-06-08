@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controller.DashboardController" styleClass="dashboard-view" prefHeight="600.0" prefWidth="1000.0" stylesheets= "/css/dashboard-style.css">
+    <top>
+        <!-- HEADER -->
+        <HBox alignment="CENTER" styleClass="header-bar">
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <children>
+                        <StackPane style="-fx-min-width: 24; -fx-min-height: 24;">
+                            <children>
+                                <SVGPath content="M10.5 21l-5.25-5.25L10.5 10.5l5.25 5.25-5.25 5.25zM10.5 10.5L5.25 5.25 10.5 0l5.25 5.25L10.5 10.5z" style="-fx-fill: #3f51b5;" />
+                            </children>
+                        </StackPane>
+                        <Label text="Optik XYZ" styleClass="logo-text" />
+                    </children>
+                </HBox>
+                <Region HBox.hgrow="ALWAYS" />
+                <HBox alignment="CENTER" spacing="20.0">
+                    <children>
+                        <Button text="Home" styleClass="nav-button" />
+                        <Button text="Products" styleClass="nav-button" />
+                        <Button text="Appointments" styleClass="nav-button" />
+                        <Button text="Dashboard" styleClass="nav-button" />
+                    </children>
+                </HBox>
+                <Region HBox.hgrow="ALWAYS" />
+                <HBox alignment="CENTER" spacing="15.0">
+                    <children>
+                        <Button styleClass="user-button" text="Customer User">
+                            <graphic>
+                                <StackPane style="-fx-min-width: 16; -fx-min-height: 16;">
+                                    <children>
+                                        <SVGPath content="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" style="-fx-fill: #3f51b5;" />
+                                    </children>
+                                </StackPane>
+                            </graphic>
+                        </Button>
+                        <!-- DIUBAH: Ikon keranjang belanja yang benar -->
+                        <Button styleClass="nav-button">
+                             <graphic>
+                                <StackPane style="-fx-min-width: 24; -fx-min-height: 24;">
+                                    <children>
+                                        <SVGPath content="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c.51 0 .962.343 1.087.835l.383 1.437M7.5 14.25 5.106 5.106A2.25 2.25 0 0 0 2.869 3H2.25" style="-fx-fill: #424242;" />
+                                    </children>
+                                </StackPane>
+                            </graphic>
+                        </Button>
+                    </children>
+                </HBox>
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent;">
+            <content>
+                <VBox alignment="TOP_CENTER">
+                    <children>
+                        <VBox alignment="TOP_CENTER" spacing="80.0">
+                            <!-- HERO SECTION (Tidak berubah) -->
+                            <VBox alignment="CENTER" styleClass="hero-section" spacing="20.0">
+                                <children>
+                                    <Label text="Your Vision, Our Priority" styleClass="hero-title" />
+                                    <Label text="Schedule your eye examination and find the perfect eyewear with Optik XYZ's seamless online service." styleClass="hero-subtitle" textAlignment="CENTER" maxWidth="600" />
+                                    <HBox alignment="CENTER" spacing="20.0">
+                                        <children>
+                                            <Button text="Book Appointment" styleClass="hero-button-primary" />
+                                            <Button text="Shop Products" styleClass="hero-button-secondary" />
+                                        </children>
+                                        <VBox.margin>
+                                            <Insets top="20.0" />
+                                        </VBox.margin>
+                                    </HBox>
+                                </children>
+                            </VBox>
+                        
+                            <!-- SERVICES SECTION (DIUBAH) -->
+                            <VBox alignment="TOP_CENTER" spacing="20.0" maxWidth="1000">
+                                <children>
+                                    <Label text="Our Services" styleClass="section-title" />
+                                    <Label text="From comprehensive eye examinations to stylish eyewear, we provide everything you need for optimal vision and eye health." styleClass="section-subtitle" textAlignment="CENTER" maxWidth="650"/>
+                                    <HBox alignment="CENTER" spacing="30.0" >
+                                        <VBox.margin><Insets top="20.0" /></VBox.margin>
+                                        <children>
+                                            <!-- DIUBAH: Kartu dibuat dengan ukuran tetap dan ikon mata -->
+                                            <VBox styleClass="service-card" alignment="TOP_CENTER" spacing="15.0" prefWidth="280" prefHeight="260">
+                                                <StackPane styleClass="icon-container"><SVGPath content="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.432 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" styleClass="icon-shape"/></StackPane>
+                                                <Label text="Eye Examinations" styleClass="card-title"/>
+                                                <Label text="Comprehensive eye exams by our experienced optometrists using the latest technology." styleClass="card-description" textAlignment="CENTER" wrapText="true"/>
+                                            </VBox>
+                                            <!-- DIUBAH: Kartu dibuat dengan ukuran tetap dan ikon tas belanja -->
+                                            <VBox styleClass="service-card" alignment="TOP_CENTER" spacing="15.0" prefWidth="280" prefHeight="260">
+                                                <StackPane styleClass="icon-container"><SVGPath content="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.658-.463 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" styleClass="icon-shape"/></StackPane>
+                                                <Label text="Quality Eyewear" styleClass="card-title"/>
+                                                <Label text="Extensive selection of frames, lenses, and accessories from leading brands." styleClass="card-description" textAlignment="CENTER" wrapText="true"/>
+                                            </VBox>
+                                            <!-- DIUBAH: Kartu dibuat dengan ukuran tetap dan ikon kalender -->
+                                            <VBox styleClass="service-card" alignment="TOP_CENTER" spacing="15.0" prefWidth="280" prefHeight="260">
+                                                <StackPane styleClass="icon-container"><SVGPath content="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0h18M12 12.75h.008v.008H12v-.008Z" styleClass="icon-shape"/></StackPane>
+                                                <Label text="Online Scheduling" styleClass="card-title"/>
+                                                <Label text="Easily book appointments, track orders, and manage prescriptions online." styleClass="card-description" textAlignment="CENTER" wrapText="true"/>
+                                            </VBox>
+                                        </children>
+                                    </HBox>
+                                </children>
+                            </VBox>
+                        
+                            <!-- WHY CHOOSE US SECTION (Tidak berubah) -->
+                            <VBox alignment="TOP_CENTER" spacing="20.0" maxWidth="1000">
+                                 <children>
+                                    <Label text="Why Choose Optik XYZ" styleClass="section-title" />
+                                    <Label text="We're committed to providing exceptional eye care and premium optical products." styleClass="section-subtitle" textAlignment="CENTER" />
+                                    <HBox alignment="CENTER" spacing="30.0">
+                                        <VBox.margin><Insets top="20.0" /></VBox.margin>
+                                        <children>
+                                             <VBox styleClass="feature-card" alignment="CENTER" spacing="10.0">
+                                                <SVGPath content="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" styleClass="icon-shape"/>
+                                                <Label text="Expert Care" styleClass="card-title"/>
+                                             </VBox>
+                                             <VBox styleClass="feature-card" alignment="CENTER" spacing="10.0">
+                                                <SVGPath content="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" styleClass="icon-shape"/>
+                                                <Label text="Quality Products" styleClass="card-title"/>
+                                             </VBox>
+                                             <VBox styleClass="feature-card" alignment="CENTER" spacing="10.0">
+                                                <SVGPath content="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" styleClass="icon-shape"/>
+                                                <Label text="Convenient Service" styleClass="card-title"/>
+                                             </VBox>
+                                             <VBox styleClass="feature-card" alignment="CENTER" spacing="10.0">
+                                                <SVGPath content="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" styleClass="icon-shape"/>
+                                                <Label text="Affordable Options" styleClass="card-title"/>
+                                             </VBox>
+                                        </children>
+                                    </HBox>
+                                </children>
+                            </VBox>
+                        </VBox>
+
+                        <Region VBox.vgrow="ALWAYS" />
+
+                        <VBox alignment="TOP_CENTER">
+                            <VBox.margin><Insets top="80.0"/></VBox.margin>
+                            <children>
+                                <!-- CTA SECTION (Tidak berubah) -->
+                                <VBox alignment="CENTER" spacing="15.0" styleClass="cta-section">
+                                    <children>
+                                        <Label text="Ready to Experience Better Vision?" styleClass="cta-title" />
+                                        <Label text="Schedule your eye examination today or explore our collection of quality eyewear." styleClass="cta-subtitle" textAlignment="CENTER" />
+                                        <HBox alignment="CENTER" spacing="20.0">
+                                            <children>
+                                                <Button text="Book Appointment" styleClass="hero-button-primary" />
+                                                <Button text="Shop Now" styleClass="hero-button-secondary" />
+                                            </children>
+                                            <VBox.margin>
+                                                <Insets top="10.0" />
+                                            </VBox.margin>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <!-- FOOTER (Tidak berubah) -->
+                                <VBox styleClass="footer" spacing="30.0">
+                                    <children>
+                                        <HBox spacing="40.0" VBox.vgrow="ALWAYS">
+                                            <children>
+                                                <VBox HBox.hgrow="ALWAYS" spacing="15.0" minWidth="250">
+                                                    <Label text="Optik XYZ" styleClass="footer-title"/>
+                                                    <Label text="Providing quality eye care and optical products since 2023. Your vision is our priority." styleClass="footer-text" wrapText="true"/>
+                                                </VBox>
+                                                 <VBox HBox.hgrow="ALWAYS" spacing="10.0">
+                                                    <Label text="Quick Links" styleClass="footer-title"/>
+                                                    <Label text="Home" styleClass="footer-link"/>
+                                                    <Label text="Products" styleClass="footer-link"/>
+                                                    <Label text="Book Appointment" styleClass="footer-link"/>
+                                                    <Label text="Login / Register" styleClass="footer-link"/>
+                                                </VBox>
+                                                 <VBox HBox.hgrow="ALWAYS" spacing="10.0">
+                                                    <Label text="Our Services" styleClass="footer-title"/>
+                                                    <Label text="Eye Examinations" styleClass="footer-link"/>
+                                                    <Label text="Contact Lens Fitting" styleClass="footer-link"/>
+                                                    <Label text="Prescription Glasses" styleClass="footer-link"/>
+                                                    <Label text="Sunglasses" styleClass="footer-link"/>
+                                                    <Label text="Eye Care Products" styleClass="footer-link"/>
+                                                </VBox>
+                                                 <VBox HBox.hgrow="ALWAYS" spacing="10.0">
+                                                    <Label text="Contact Us" styleClass="footer-title"/>
+                                                    <Label text="123 Vision Street, Optika City" styleClass="footer-text"/>
+                                                    <Label text="(123) 456-7890" styleClass="footer-text"/>
+                                                    <Label text="info@Optik XYZ.com" styleClass="footer-text"/>
+                                                    <Label text="Mon-Fri: 9AM - 6PM" styleClass="footer-text"/>
+                                                </VBox>
+                                            </children>
+                                        </HBox>
+                                        <Separator />
+                                        <Label text="© 2025 Optik XYZ. All rights reserved." styleClass="footer-bottom-text" alignment="CENTER" maxWidth="Infinity"/>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </center>
+</BorderPane>

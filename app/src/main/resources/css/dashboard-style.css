@@ -1,0 +1,165 @@
+/* --- Global & Typography --- */
+.dashboard-view {
+    -fx-background-color: #f8f9fa; /* Latar belakang lebih cerah */
+    -fx-font-family: 'Inter', 'Arial', sans-serif;
+}
+
+.section-title {
+    -fx-font-size: 26px; /* Sedikit lebih kecil */
+    -fx-font-weight: bold;
+    -fx-text-fill: #212529;
+}
+
+.section-subtitle {
+    -fx-font-size: 15px;
+    -fx-text-fill: #6c757d;
+    -fx-wrap-text: true; /* Memastikan teks bisa wrap */
+}
+
+/* --- Header --- */
+.header-bar {
+    -fx-background-color: white;
+    -fx-padding: 10px 40px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 10, 0, 0, 5);
+}
+
+.logo-text {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1a237e;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #495057;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+}
+
+.nav-button:hover {
+    -fx-text-fill: #3f51b5;
+}
+
+.user-button {
+    -fx-background-color: #e8eaf6;
+    -fx-text-fill: #3f51b5;
+    -fx-background-radius: 20px;
+    -fx-padding: 8px 16px;
+    -fx-font-weight: bold;
+}
+
+/* --- Hero Section --- */
+.hero-section {
+    -fx-background-color: #1a237e;
+    -fx-padding: 80px 60px;
+}
+
+.hero-title {
+    -fx-font-size: 44px; /* Sedikit lebih kecil */
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.hero-subtitle {
+    -fx-font-size: 17px;
+    -fx-text-fill: #c5cae9;
+    -fx-wrap-text: true;
+}
+
+.hero-button-primary {
+    -fx-background-color: white;
+    -fx-text-fill: #1a237e;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 24px;
+    -fx-background-radius: 8px;
+}
+
+.hero-button-secondary {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-border-color: white;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+    -fx-padding: 12px 24px;
+    -fx-font-weight: bold;
+}
+
+/* --- Services & Features Section --- */
+/* DIUBAH: Ukuran kartu, padding, dan bayangan disesuaikan */
+.service-card {
+    -fx-background-color: white;
+    -fx-padding: 20px;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(140, 152, 164, 0.15), 15, 0, 0, 4);
+    -fx-border-color: #eef2f6;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+}
+
+/* DIUBAH: Font lebih ramping/kecil */
+.card-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 600; /* Semi-bold */
+    -fx-text-fill: #343a40;
+}
+
+.card-description {
+    -fx-font-size: 13px;
+    -fx-text-fill: #6c757d;
+    -fx-wrap-text: true;
+}
+
+/* DIUBAH: Ukuran ikon lebih kecil agar proporsional */
+.icon-container {
+    -fx-background-color: #e8eaf6;
+    -fx-padding: 12px; /* Dikecilkan */
+    -fx-background-radius: 50%;
+}
+
+.icon-shape {
+    -fx-fill: #3f51b5;
+}
+
+
+/* --- Call to Action & Footer --- */
+.cta-section {
+    -fx-background-color: #3f51b5;
+    -fx-padding: 60px;
+}
+
+.cta-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.cta-subtitle {
+    -fx-font-size: 16px;
+    -fx-text-fill: #e8eaf6;
+}
+
+.footer {
+    -fx-background-color: #212529;
+    -fx-padding: 40px 60px;
+}
+
+.footer-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.footer-text, .footer-link {
+    -fx-font-size: 14px;
+    -fx-text-fill: #ced4da;
+}
+
+.footer-link:hover {
+    -fx-underline: true;
+}
+
+.footer-bottom-text {
+    -fx-text-fill: #adb5bd;
+    -fx-font-size: 12px;
+}
