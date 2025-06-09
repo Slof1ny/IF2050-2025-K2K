@@ -151,6 +151,9 @@ public class LoginController {
             return;
         }
 
+        // Set info login ke DashboardController
+        Controller.DashboardController.setLoginInfo(role, name);
+
         // Jika berhasil, ke dashboard
         try {
             Stage stage = (Stage) signInButton.getScene().getWindow();
