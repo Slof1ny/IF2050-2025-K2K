@@ -1878,4 +1878,44 @@ public class Database {
         
         return detailList;
     }
+    
+    // === AUTHENTICATION METHODS ===
+    public boolean authenticatePelanggan(String nama, String password) {
+        String sql = "SELECT * FROM pelanggan WHERE nama = ? AND password = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, nama);
+            stmt.setString(2, password);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            System.err.println("Error authenticating pelanggan: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean authenticateDokter(String nama, String password) {
+        String sql = "SELECT * FROM dokter WHERE nama = ? AND password = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, nama);
+            stmt.setString(2, password);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            System.err.println("Error authenticating dokter: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean authenticateAdmin(String username, String password) {
+        String sql = "SELECT * FROM admin WHERE username = ? AND password = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            System.err.println("Error authenticating admin: " + e.getMessage());
+        }
+        return false;
+    }
 }

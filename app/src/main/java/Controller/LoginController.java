@@ -133,19 +133,32 @@ public class LoginController {
             showAlert("Login Failed", "Nama, password, dan role tidak boleh kosong.");
             return;
         }
-        
+
+        // Autentikasi ke database sesuai role
+        Database.Database db = new Database.Database();
+        boolean isAuthenticated = false;
+        String role = selectedRole.getName();
+        if (role.equalsIgnoreCase("Customer")) {
+            isAuthenticated = db.authenticatePelanggan(name, password);
+        } else if (role.equalsIgnoreCase("Doctor")) {
+            isAuthenticated = db.authenticateDokter(name, password);
+        } else if (role.equalsIgnoreCase("Admin")) {
+            isAuthenticated = db.authenticateAdmin(name, password);
+        }
+
+        if (!isAuthenticated) {
+            showAlert("Login Failed", "Nama atau password salah untuk role " + role + ".");
+            return;
+        }
+
         // Jika berhasil, ke dashboard
         try {
             Stage stage = (Stage) signInButton.getScene().getWindow();
-            
             Parent dashboardRoot = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
-            
             Scene dashboardScene = new Scene(dashboardRoot, 1000, 600);
-            
             stage.setScene(dashboardScene);
             stage.setTitle("TemuOptic Dashboard");
             stage.centerOnScreen(); // Posisikan jendela di tengah layar
-
         } catch (IOException e) {
             e.printStackTrace();
             showAlert("Error", "Gagal memuat halaman dashboard.");
