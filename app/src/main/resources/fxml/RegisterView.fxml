@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controller.RegisterController" stylesheets="/css/login-style.css" prefHeight="600.0" prefWidth="1000.0">
+    <children>
+        <HBox>
+            <!-- PANEL KIRI (FORM) -->
+            <VBox HBox.hgrow="ALWAYS" alignment="CENTER" maxWidth="500.0" prefWidth="500.0" styleClass="form-pane">
+                <children>
+                    <VBox alignment="CENTER_LEFT" maxWidth="400.0" spacing="5.0" styleClass="login-card">
+                        <padding>
+                            <Insets top="40" right="40" bottom="40" left="40" />
+                        </padding>
+                        <children>
+                            <Label styleClass="header-label" text="Register New Account" />
+                            <Label styleClass="input-label" text="Nama" />
+                            <TextField fx:id="nameField" promptText="Masukkan nama Anda" />
+                            <Label styleClass="input-label" text="Email" />
+                            <TextField fx:id="emailField" promptText="Masukkan email Anda" />
+                            <Label styleClass="input-label" text="No HP" />
+                            <TextField fx:id="phoneField" promptText="Masukkan nomor HP Anda" />
+                            <Label styleClass="input-label" text="Password" />
+                            <PasswordField fx:id="passwordField" promptText="Password" />
+                            <Button fx:id="registerButton" onAction="#handleRegister" text="Register">
+                                <VBox.margin>
+                                    <Insets top="20.0" />
+                                </VBox.margin>
+                            </Button>
+                            <Label fx:id="notificationLabel" visible="false" managed="false" styleClass="notification-label" />
+                            <Button text="Back to Login" onAction="#handleBackToLogin" styleClass="form-link" />
+                        </children>
+                    </VBox>
+                </children>
+            </VBox>
+            <!-- PANEL KANAN (GAMBAR) -->
+            <StackPane HBox.hgrow="ALWAYS" styleClass="image-pane">
+                <children>
+                    <ImageView fitHeight="600.0" fitWidth="500.0" pickOnBounds="true" preserveRatio="false">
+                        <image>
+                            <Image url="/image/KlinikMata.jpg" />
+                        </image>
+                    </ImageView>
+                </children>
+            </StackPane>
+        </HBox>
+    </children>
+</StackPane>

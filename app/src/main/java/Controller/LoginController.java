@@ -169,25 +169,27 @@ public class LoginController {
     }
     @FXML
     void handleForgotPassword() {
-        notificationLabel.setText("Silahkan hubungi admin untuk kendala ini");
-        notificationLabel.setTranslateY(-50);
-        notificationLabel.setVisible(true);
-        notificationLabel.setManaged(true);
-
-        TranslateTransition slideDown = new TranslateTransition(Duration.millis(500), notificationLabel);
-        slideDown.setToY(0);
-
-        PauseTransition pause = new PauseTransition(Duration.seconds(3));
-
-        TranslateTransition slideUp = new TranslateTransition(Duration.millis(500), notificationLabel);
-        slideUp.setToY(-50);
-
-        SequentialTransition sequence = new SequentialTransition(slideDown, pause, slideUp);
-        sequence.setOnFinished(e -> {
-            notificationLabel.setVisible(false);
-            notificationLabel.setManaged(false);
-        });
-        sequence.play();
+        try {
+            Stage stage = (Stage) signInButton.getScene().getWindow();
+            Parent forgotRoot = FXMLLoader.load(getClass().getResource("/fxml/ForgotPasswordView.fxml"));
+            stage.setScene(new Scene(forgotRoot, 950, 600));
+            stage.setTitle("Reset Password");
+            stage.centerOnScreen();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    @FXML
+    void handleRegisterLink() {
+        try {
+            Stage stage = (Stage) signInButton.getScene().getWindow();
+            Parent registerRoot = FXMLLoader.load(getClass().getResource("/fxml/RegisterView.fxml"));
+            stage.setScene(new Scene(registerRoot, 950, 600));
+            stage.setTitle("Register");
+            stage.centerOnScreen();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void showAlert(String title, String content) {

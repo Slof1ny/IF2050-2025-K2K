@@ -28,7 +28,7 @@
                         </padding>
                         <children>
                             <Label styleClass="header-label" text="Sign in to Optik XYZ" />
-                            <Hyperlink text="Or create a new account">
+                            <Hyperlink fx:id="registerLink" onAction="#handleRegisterLink" text="Or create a new account">
                                 <!-- DIUBAH: Margin dipindahkan ke dalam elemen Hyperlink -->
                                 <VBox.margin>
                                     <Insets bottom="10.0" />
