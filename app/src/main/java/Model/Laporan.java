@@ -9,9 +9,9 @@ public class Laporan {
     private Date periodeSelesai;
     private Date tanggalDibuat;
     private String kontenLaporan;
-    private int dibuatOleh;
+    private Admin dibuatOleh;
 
-    public Laporan(int idLaporan, String tipeLaporan, Date periodeMulai, Date periodeSelesai, Date tanggalDibuat, String kontenLaporan, int dibuatOleh) {
+    public Laporan(int idLaporan, String tipeLaporan, Date periodeMulai, Date periodeSelesai, Date tanggalDibuat, String kontenLaporan, Admin dibuatOleh) {
         this.idLaporan = idLaporan;
         this.tipeLaporan = tipeLaporan;
         this.periodeMulai = periodeMulai;
@@ -69,11 +69,11 @@ public class Laporan {
         this.kontenLaporan = kontenLaporan;
     }
 
-    public int getDibuatOleh() {
+    public Admin getDibuatOleh() {
         return dibuatOleh;
     }
 
-    public void setDibuatOleh(int dibuatOleh) {
+    public void setDibuatOleh(Admin dibuatOleh) {
         this.dibuatOleh = dibuatOleh;
     }
     
