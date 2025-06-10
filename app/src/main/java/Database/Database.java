@@ -1918,4 +1918,25 @@ public class Database {
         }
         return false;
     }
+    
+    // Reset password pelanggan jika nama ada di database
+    public boolean resetPasswordIfUserExists(String nama, String newPassword) {
+        String checkSQL = "SELECT * FROM pelanggan WHERE nama = ?";
+        String updateSQL = "UPDATE pelanggan SET password = ? WHERE nama = ?";
+        try (PreparedStatement checkStmt = connection.prepareStatement(checkSQL)) {
+            checkStmt.setString(1, nama);
+            ResultSet rs = checkStmt.executeQuery();
+            if (rs.next()) {
+                try (PreparedStatement updateStmt = connection.prepareStatement(updateSQL)) {
+                    updateStmt.setString(1, newPassword);
+                    updateStmt.setString(2, nama);
+                    int rows = updateStmt.executeUpdate();
+                    return rows > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error resetting password: " + e.getMessage());
+        }
+        return false;
+    }
 }
