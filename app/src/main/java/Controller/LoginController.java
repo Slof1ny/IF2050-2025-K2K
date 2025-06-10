@@ -189,6 +189,18 @@ public class LoginController {
         });
         sequence.play();
     }
+    @FXML
+    void handleRegisterLink() {
+        try {
+            Stage stage = (Stage) signInButton.getScene().getWindow();
+            Parent registerRoot = FXMLLoader.load(getClass().getResource("/fxml/RegisterView.fxml"));
+            stage.setScene(new Scene(registerRoot, 950, 600));
+            stage.setTitle("Register");
+            stage.centerOnScreen();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     private void showAlert(String title, String content) {
         Alert alert = new Alert(AlertType.INFORMATION);

@@ -13,6 +13,13 @@ public class Pelanggan {
         this.noHp = noHp;
         this.password = password;
     }
+    
+    public Pelanggan(String nama, String email, String noHp, String password) {
+        this.nama = nama;
+        this.email = email;
+        this.noHp = noHp;
+        this.password = password;
+    }
 
     public int getId() {
         return id;
