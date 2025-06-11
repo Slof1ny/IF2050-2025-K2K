@@ -2,14 +2,10 @@ package Controller;
 
 import java.io.IOException;
 
-import javafx.animation.PauseTransition;
-import javafx.animation.SequentialTransition;
-import javafx.animation.TranslateTransition;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.layout.StackPane;
@@ -28,7 +24,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
 import javafx.util.Callback;
-import javafx.util.Duration;
 
 public class LoginController {
 
@@ -39,7 +34,7 @@ public class LoginController {
     @FXML
     private CheckBox rememberMeCheck;
     @FXML
-    private ComboBox<RoleItem> roleDropdown; // DIUBAH: Tipe ComboBox
+    private ComboBox<RoleItem> roleDropdown;
     @FXML
     private Button signInButton;
     @FXML
@@ -82,7 +77,7 @@ public class LoginController {
     }
 
     private void setupRoleComboBox() {
-        String customerIcon = "M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z";
+        String customerIcon = "M12 2.25c-5.206 0-9.45 4.244-9.75 9.428-.003.085-.003.17-.003.255 0 5.206 4.244 9.45 9.428 9.75.085.003.17.003.255.003 5.206 0 9.45-4.244 9.75-9.428.003-.085.003-.17.003-.255 0-5.206-4.244-9.45-9.428-9.75A9.686 9.686 0 0 0 12 2.25Zm0 17.25a7.5 7.5 0 0 1 0-15c4.136 0 7.5 3.364 7.5 7.5 0 4.136-3.364 7.5-7.5 7.5Zm-.75-7.5a.75.75 0 0 0 .75-.75V8.25a.75.75 0 0 0-1.5 0v4.5a.75.75 0 0 0 .75.75ZM12 7.5a.75.75 0 0 0 0-1.5.75.75 0 0 0 0 1.5Zm3.75 9a.75.75 0 0 0 0-1.5H10.5a.75.75 0 0 0 0 1.5h5.25Z";
         String doctorIcon = "M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z M12 12.75a.75.75 0 0 0 .75-.75V8.25a.75.75 0 0 0-1.5 0V12a.75.75 0 0 0 .75.75Z M13.5 14.25a.75.75 0 0 0 0-1.5H10.5a.75.75 0 0 0 0 1.5h3Z";
         String adminIcon = "M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z";
 
@@ -93,7 +88,43 @@ public class LoginController {
             new RoleItem("Admin", adminIcon)
         ));
 
-        Callback<ListView<RoleItem>, ListCell<RoleItem>> cellFactory = lv -> new ListCell<>() {
+        // Kustomisasi tampilan item di ComboBox
+        Callback<ListView<RoleItem>, ListCell<RoleItem>> cellFactory = new Callback<ListView<RoleItem>, ListCell<RoleItem>>() {
+            @Override
+            public ListCell<RoleItem> call(ListView<RoleItem> param) {
+                return new ListCell<RoleItem>() {
+                    @Override
+                    protected void updateItem(RoleItem item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setText(null);
+                            setGraphic(null);
+                        } else {
+                            // Buat HBox untuk menampung ikon dan teks
+                            HBox hbox = new HBox(10); 
+                            hbox.setAlignment(Pos.CENTER_LEFT);
+
+                            SVGPath icon = new SVGPath();
+                            icon.setContent(item.getSvgIconPath());
+                            icon.setFill(Color.web("#546e7a")); // Warna ikon
+                            icon.setFill(Color.web("#546e7a"));
+                            
+                            StackPane iconContainer = new StackPane(icon);
+                            iconContainer.setPrefSize(18, 18);
+
+                            Label label = new Label(item.getName());
+                            
+                            hbox.getChildren().addAll(iconContainer, label);
+                            setGraphic(hbox);
+                        }
+                    }
+                };
+            }
+        };
+
+        roleDropdown.setCellFactory(cellFactory);
+        // Fix button cell creation
+        roleDropdown.setButtonCell(new ListCell<RoleItem>() {
             @Override
             protected void updateItem(RoleItem item, boolean empty) {
                 super.updateItem(item, empty);
@@ -101,13 +132,12 @@ public class LoginController {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    // Buat HBox untuk menampung ikon dan teks
-                    HBox hbox = new HBox(10); 
+                    HBox hbox = new HBox(10);
                     hbox.setAlignment(Pos.CENTER_LEFT);
 
                     SVGPath icon = new SVGPath();
                     icon.setContent(item.getSvgIconPath());
-                    icon.setFill(Color.web("#546e7a")); // Warna ikon
+                    icon.setFill(Color.web("#546e7a"));
                     
                     StackPane iconContainer = new StackPane(icon);
                     iconContainer.setPrefSize(18, 18);
@@ -118,35 +148,24 @@ public class LoginController {
                     setGraphic(hbox);
                 }
             }
-        };
-
-        roleDropdown.setCellFactory(cellFactory);
-        roleDropdown.setButtonCell(cellFactory.call(null)); // Terapkan juga ke tombol yang terlihat
+        });
     }
+
     @FXML
     void handleSignIn() {
-        String name = nameField.getText();
+        String name = nameField.getText().trim();
         String password = passwordField.getText();
         RoleItem selectedRole = roleDropdown.getValue();
 
         if (name.isEmpty() || password.isEmpty() || selectedRole == null) {
-            showAlert("Login Failed", "Nama, password, dan role tidak boleh kosong.");
+            showAlert("Validation Error", "Semua field harus diisi!");
             return;
         }
 
-        // Autentikasi ke database sesuai role
-        Database.Database db = new Database.Database();
-        boolean isAuthenticated = false;
         String role = selectedRole.getName();
-        if (role.equalsIgnoreCase("Customer")) {
-            isAuthenticated = db.authenticatePelanggan(name, password);
-        } else if (role.equalsIgnoreCase("Doctor")) {
-            isAuthenticated = db.authenticateDokter(name, password);
-        } else if (role.equalsIgnoreCase("Admin")) {
-            isAuthenticated = db.authenticateAdmin(name, password);
-        }
+        boolean loginSuccessful = validateLogin(name, password, role);
 
-        if (!isAuthenticated) {
+        if (!loginSuccessful) {
             showAlert("Login Failed", "Nama atau password salah untuk role " + role + ".");
             return;
         }
@@ -155,30 +174,73 @@ public class LoginController {
         Controller.DashboardController.setLoginInfo(role, name);
 
         // Jika berhasil, ke dashboard
+        // Navigate based on role
         try {
             Stage stage = (Stage) signInButton.getScene().getWindow();
-            Parent dashboardRoot = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
-            Scene dashboardScene = new Scene(dashboardRoot, 1000, 600);
-            stage.setScene(dashboardScene);
-            stage.setTitle("TemuOptic Dashboard");
-            stage.centerOnScreen(); // Posisikan jendela di tengah layar
+            
+            if (role.equals("Doctor")) {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/DoctorDashboardView.fxml"));
+                Parent root = loader.load();
+                
+                // Set doctor name if controller exists
+                try {
+                    DoctorDashboardController controller = loader.getController();
+                    if (controller != null) {
+                        controller.setDoctorName(name);
+                    }
+                } catch (Exception e) {
+                    System.out.println("Warning: Could not set doctor name - " + e.getMessage());
+                }
+                
+                Scene scene = new Scene(root, 1024, 768);
+                stage.setScene(scene);
+                stage.setTitle("Doctor Dashboard - Optik XYZ");
+                
+            } else {
+                DashboardController.setLoginInfo(role, name);
+                
+                Parent dashboardRoot = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
+                Scene dashboardScene = new Scene(dashboardRoot, 1000, 600);
+                stage.setScene(dashboardScene);
+                stage.setTitle("TemuOptic Dashboard");
+            }
+            
+            stage.centerOnScreen();
+            
         } catch (IOException e) {
             e.printStackTrace();
-            showAlert("Error", "Gagal memuat halaman dashboard.");
+            showAlert("Error", "Gagal memuat halaman dashboard: " + e.getMessage());
         }
     }
+
+    private boolean validateLogin(String name, String password, String role) {
+        Database.Database db = new Database.Database();
+        
+        switch (role) {
+            case "Customer":
+                return db.authenticatePelanggan(name, password);
+            case "Doctor":
+                return db.authenticateDokter(name, password);
+            case "Admin":
+                return db.authenticateAdmin(name, password);
+            default:
+                return false;
+        }
+    }
+
     @FXML
     void handleForgotPassword() {
         try {
             Stage stage = (Stage) signInButton.getScene().getWindow();
-            Parent forgotRoot = FXMLLoader.load(getClass().getResource("/fxml/ForgotPasswordView.fxml"));
-            stage.setScene(new Scene(forgotRoot, 950, 600));
-            stage.setTitle("Reset Password");
+            Parent forgotPasswordRoot = FXMLLoader.load(getClass().getResource("/fxml/ForgotPasswordView.fxml"));
+            stage.setScene(new Scene(forgotPasswordRoot, 950, 600));
+            stage.setTitle("Forgot Password");
             stage.centerOnScreen();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
     @FXML
     void handleRegisterLink() {
         try {
