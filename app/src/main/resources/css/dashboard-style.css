@@ -273,3 +273,99 @@
     -fx-background-color: #303f9f !important;
     -fx-text-fill: white !important;
 }
+
+/* Doctor card styling */
+.doctor-card {
+    -fx-background-color: white;
+    -fx-padding: 15;
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(140, 152, 164, 0.15), 10, 0, 0, 3);
+    -fx-border-color: #e9ecef;
+    -fx-border-width: 2px;
+    -fx-border-radius: 10px;
+    -fx-cursor: hand;
+}
+
+.doctor-card:hover {
+    -fx-border-color: #3f51b5;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.3), 15, 0, 0, 5);
+}
+
+.doctor-card-selected {
+    -fx-border-color: #3f51b5 !important;
+    -fx-background-color: #f8f9ff !important;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.4), 20, 0, 0, 8) !important;
+}
+
+.doctor-specialty {
+    -fx-font-size: 14px;
+    -fx-text-fill: #3f51b5;
+    -fx-font-weight: 600;
+}
+
+.doctor-schedule {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6c757d;
+    -fx-font-style: italic;
+}
+
+/* Appointment type card styling */
+.appointment-type-card {
+    -fx-background-color: white;
+    -fx-padding: 15;
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(140, 152, 164, 0.15), 10, 0, 0, 3);
+    -fx-border-color: #e9ecef;
+    -fx-border-width: 2px;
+    -fx-border-radius: 10px;
+    -fx-cursor: hand;
+}
+
+.appointment-type-card:hover {
+    -fx-border-color: #28a745;
+    -fx-effect: dropshadow(gaussian, rgba(40, 167, 69, 0.3), 15, 0, 0, 5);
+}
+
+.appointment-type-card-selected {
+    -fx-border-color: #28a745 !important;
+    -fx-background-color: #f8fff9 !important;
+    -fx-effect: dropshadow(gaussian, rgba(40, 167, 69, 0.4), 20, 0, 0, 8) !important;
+}
+
+/* Selection info styling */
+.selection-info {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+}
+
+.selection-text {
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #495057;
+}
+
+/* Compact doctor card styling */
+.compact-doctor-card {
+    -fx-background-color: white;
+    -fx-padding: 8;
+    -fx-background-radius: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(140, 152, 164, 0.15), 8, 0, 0, 2);
+    -fx-border-color: #e9ecef;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+}
+
+.compact-doctor-card:hover {
+    -fx-border-color: #3f51b5;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.25), 12, 0, 0, 4);
+}
+
+.compact-doctor-card-selected {
+    -fx-border-color: #3f51b5 !important;
+    -fx-background-color: #f8f9ff !important;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.4), 15, 0, 0, 6) !important;
+}

@@ -34,6 +34,16 @@ public class DashboardController implements Initializable {
 
     private LocalDate currentWeekStart;
     private String currentActiveTab = "home";
+    
+    // Add fields to track selections
+    private String selectedDoctor = null;
+    private String selectedAppointmentType = null;
+    private HBox selectedDoctorCard = null; // Changed from VBox to HBox
+    private VBox selectedTypeCard = null;
+    private boolean showingCalendar = false;
+    private boolean showingAppointmentTypes = false;
+    private LocalDate selectedDate = null;
+    private String selectedTime = null;
 
     // Add enum for availability status (customer view)
     private enum AvailabilityStatus {
@@ -348,15 +358,11 @@ public class DashboardController implements Initializable {
             date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + " at " + time);
         dateTimeLabel.getStyleClass().add("patient-name");
 
-        Label doctorLabel = new Label("Doctor: DR. Available Doctor");
+        Label doctorLabel = new Label("Doctor: " + (selectedDoctor != null ? selectedDoctor : "DR. Available Doctor"));
         doctorLabel.getStyleClass().add("field-label");
 
-        Label typeLabel = new Label("Appointment Type:");
+        Label typeLabel = new Label("Appointment Type: " + (selectedAppointmentType != null ? selectedAppointmentType : "Regular Checkup"));
         typeLabel.getStyleClass().add("field-label");
-
-        ComboBox<String> typeCombo = new ComboBox<>();
-        typeCombo.getItems().addAll("Regular Checkup", "Follow-up Visit", "Eye Examination", "Prescription Update");
-        typeCombo.setValue("Regular Checkup");
 
         Label notesLabel = new Label("Additional Notes:");
         notesLabel.getStyleClass().add("field-label");
@@ -365,17 +371,39 @@ public class DashboardController implements Initializable {
         notesArea.setPrefRowCount(3);
         notesArea.setPromptText("Enter any additional information or symptoms...");
 
-        content.getChildren().addAll(dateTimeLabel, doctorLabel, typeLabel, typeCombo, notesLabel, notesArea);
+        content.getChildren().addAll(dateTimeLabel, doctorLabel, typeLabel, notesLabel, notesArea);
 
         bookingDialog.getDialogPane().setContent(content);
 
         bookingDialog.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                // Here you would save the appointment to database
                 showAlert("Success", "Appointment booked successfully!\n\n" +
+                    "Doctor: " + (selectedDoctor != null ? selectedDoctor : "DR. Available Doctor") + "\n" +
                     "Date: " + date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "\n" +
                     "Time: " + time + "\n" +
-                    "Type: " + typeCombo.getValue());
+                    "Type: " + (selectedAppointmentType != null ? selectedAppointmentType : "Regular Checkup"));
+                
+                // Reset selections and go back to selection view
+                selectedDoctor = null;
+                selectedAppointmentType = null;
+                showingCalendar = false;
+                if (selectedDoctorCard != null) {
+                    selectedDoctorCard.getStyleClass().remove("doctor-card-selected");
+                    selectedDoctorCard = null;
+                }
+                if (selectedTypeCard != null) {
+                    selectedTypeCard.getStyleClass().remove("appointment-type-card-selected");
+                    selectedTypeCard = null;
+                }
+                
+                // Refresh the booking content to show selection screen again
+                VBox container = (VBox) appointmentsTabContent.lookup("VBox");
+                if (container != null) {
+                    ScrollPane scrollPane = (ScrollPane) appointmentsTabContent.getChildren().get(0);
+                    VBox scrollableContent = (VBox) scrollPane.getContent();
+                    VBox contentContainer = (VBox) scrollableContent.getChildren().get(2); // Main content container
+                    loadBookAppointmentContent(contentContainer);
+                }
             }
         });
     }
@@ -653,66 +681,380 @@ public class DashboardController implements Initializable {
     private void loadBookAppointmentContent(VBox container) {
         container.getChildren().clear();
         
+        // Check if we're showing appointment types
+        if (showingAppointmentTypes) {
+            loadAppointmentTypeSelection(container);
+            return;
+        }
+        
+        // Always show calendar first for booking
         Label bookHeader = new Label("Book New Appointment");
         bookHeader.getStyleClass().add("card-title");
         
-        VBox bookingSection = new VBox(15);
-        bookingSection.setAlignment(Pos.CENTER);
+        // Doctor selection section (quick selection at top)
+        VBox doctorSection = new VBox(15);
+        doctorSection.setAlignment(Pos.CENTER);
         
-        Label instructionLabel = new Label("Select your preferred appointment type and schedule:");
-        instructionLabel.getStyleClass().add("card-description");
-        instructionLabel.setAlignment(Pos.CENTER);
+        Label doctorSectionHeader = new Label("Select Your Doctor");
+        doctorSectionHeader.getStyleClass().add("section-subtitle");
+        doctorSectionHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
         
-        // Quick booking options
-        GridPane quickOptions = new GridPane();
-        quickOptions.setHgap(15);
-        quickOptions.setVgap(15);
-        quickOptions.setAlignment(Pos.CENTER);
+        // Doctor cards grid (smaller, horizontal layout)
+        HBox doctorGrid = new HBox(10);
+        doctorGrid.setAlignment(Pos.CENTER);
+        
+        // Create smaller doctor cards
+        HBox[] doctorCards = {
+            createCompactDoctorCard("Dr. Sarah Johnson", "Eye Specialist"),
+            createCompactDoctorCard("Dr. Michael Chen", "Optometrist"),
+            createCompactDoctorCard("Dr. Emily Wilson", "Pediatric Optometrist"),
+            createCompactDoctorCard("Dr. David Brown", "Contact Lens Specialist")
+        };
+        
+        doctorGrid.getChildren().addAll(doctorCards);
+        doctorSection.getChildren().addAll(doctorSectionHeader, doctorGrid);
+        
+        // Calendar section
+        VBox calendarSection = new VBox(15);
+        calendarSection.setAlignment(Pos.CENTER);
+        
+        Label calendarHeader = new Label("Select Date & Time");
+        calendarHeader.getStyleClass().add("section-subtitle");
+        calendarHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+
+        // Week navigation
+        HBox weekNavigation = new HBox(15);
+        weekNavigation.setAlignment(Pos.CENTER);
+        weekNavigation.setPadding(new Insets(10, 0, 10, 0));
+
+        Button prevWeekBtn = new Button("◀ Previous Week");
+        prevWeekBtn.getStyleClass().add("hero-button-secondary");
+
+        Label weekLabel = new Label("Week of " + currentWeekStart.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
+        weekLabel.getStyleClass().add("section-subtitle");
+        weekLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+
+        Button nextWeekBtn = new Button("Next Week ▶");
+        nextWeekBtn.getStyleClass().add("hero-button-secondary");
+
+        weekNavigation.getChildren().addAll(prevWeekBtn, weekLabel, nextWeekBtn);
+
+        // Calendar grid
+        GridPane calendar = new GridPane();
+        calendar.setHgap(5);
+        calendar.setVgap(5);
+        calendar.getStyleClass().add("service-card");
+        calendar.setPadding(new Insets(15));
+
+        // Setup column constraints for one week
+        for (int i = 0; i < 8; i++) {
+            ColumnConstraints col = new ColumnConstraints();
+            col.setHgrow(Priority.SOMETIMES);
+            col.setMinWidth(100);
+            calendar.getColumnConstraints().add(col);
+        }
+
+        // Setup row constraints
+        for (int i = 0; i < 11; i++) {
+            RowConstraints row = new RowConstraints();
+            row.setVgrow(Priority.SOMETIMES);
+            row.setMinHeight(40);
+            calendar.getRowConstraints().add(row);
+        }
+
+        loadBookingCalendar(calendar, weekLabel);
+
+        // Week navigation handlers
+        prevWeekBtn.setOnAction(e -> {
+            currentWeekStart = currentWeekStart.minusWeeks(1);
+            weekLabel.setText("Week of " + currentWeekStart.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
+            loadBookingCalendar(calendar, weekLabel);
+        });
+
+        nextWeekBtn.setOnAction(e -> {
+            currentWeekStart = currentWeekStart.plusWeeks(1);
+            weekLabel.setText("Week of " + currentWeekStart.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
+            loadBookingCalendar(calendar, weekLabel);
+        });
+
+        HBox legend = createAppointmentLegend();
+        legend.setPadding(new Insets(15, 0, 0, 0));
+
+        calendarSection.getChildren().addAll(calendarHeader, weekNavigation, calendar, legend);
+        container.getChildren().addAll(bookHeader, doctorSection, calendarSection);
+    }
+    
+    private HBox createCompactDoctorCard(String name, String specialty) {
+        HBox card = new HBox(10);
+        card.getStyleClass().add("compact-doctor-card");
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPrefWidth(200);
+        card.setPrefHeight(60);
+        card.setPadding(new Insets(10));
+        
+        card.setOnMouseClicked(e -> {
+            // Remove selection from previous card
+            if (selectedDoctorCard != null) {
+                selectedDoctorCard.getStyleClass().remove("compact-doctor-card-selected");
+            }
+            
+            // Select this card
+            selectedDoctor = name;
+            selectedDoctorCard = card;
+            card.getStyleClass().add("compact-doctor-card-selected");
+        });
+        
+        VBox doctorInfo = new VBox(2);
+        doctorInfo.setAlignment(Pos.CENTER_LEFT);
+        
+        Label nameLabel = new Label(name);
+        nameLabel.getStyleClass().add("card-title");
+        nameLabel.setStyle("-fx-font-size: 12px;");
+        
+        Label specialtyLabel = new Label(specialty);
+        specialtyLabel.getStyleClass().add("doctor-specialty");
+        specialtyLabel.setStyle("-fx-font-size: 10px;");
+        
+        doctorInfo.getChildren().addAll(nameLabel, specialtyLabel);
+        card.getChildren().add(doctorInfo);
+        
+        return card;
+    }
+    
+    private void loadBookingCalendar(GridPane calendar, Label weekLabel) {
+        calendar.getChildren().clear();
+
+        // Create header row
+        Label timeHeader = new Label("Time");
+        timeHeader.getStyleClass().add("calendar-header");
+        calendar.add(timeHeader, 0, 0);
+
+        String[] days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+        for (int i = 0; i < days.length; i++) {
+            VBox dayHeaderContainer = new VBox(5);
+            dayHeaderContainer.setAlignment(Pos.CENTER);
+
+            Label dayHeader = new Label(days[i]);
+            dayHeader.getStyleClass().add("calendar-header");
+
+            LocalDate dayDate = currentWeekStart.plusDays(i);
+            Label dateLabel = new Label(dayDate.getDayOfMonth() + "");
+            dateLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #546e7a;");
+
+            dayHeaderContainer.getChildren().addAll(dayHeader, dateLabel);
+            calendar.add(dayHeaderContainer, i + 1, 0);
+        }
+
+        // Create time slots
+        String[] timeSlots = {"09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"};
+
+        for (int row = 1; row <= timeSlots.length; row++) {
+            Label timeLabel = new Label(timeSlots[row - 1]);
+            timeLabel.getStyleClass().add("calendar-time");
+            calendar.add(timeLabel, 0, row);
+
+            for (int col = 1; col <= 7; col++) {
+                LocalDate dayDate = currentWeekStart.plusDays(col - 1);
+                VBox timeSlot = createBookingTimeSlot(dayDate, timeSlots[row - 1]);
+                calendar.add(timeSlot, col, row);
+            }
+        }
+    }
+    
+    private VBox createBookingTimeSlot(LocalDate date, String time) {
+        VBox slot = new VBox(2);
+        slot.getStyleClass().add("calendar-slot");
+        slot.setAlignment(Pos.CENTER);
+        slot.setPrefHeight(40);
+
+        // Get availability status
+        AvailabilityStatus status = getSimulatedAvailability(date, time);
+        updateCustomerSlotAppearance(slot, status);
+
+        // Add status label
+        Label statusLabel = new Label(getCustomerStatusText(status));
+        statusLabel.getStyleClass().addAll("calendar-status-label", getCustomerStatusStyleClass(status));
+
+        if (status == AvailabilityStatus.OCCUPIED) {
+            Label occupiedLabel = new Label("Booked");
+            occupiedLabel.getStyleClass().add("calendar-appointment");
+            slot.getChildren().add(occupiedLabel);
+        }
+
+        slot.getChildren().add(statusLabel);
+
+        // Add click handler for available slots
+        if (status == AvailabilityStatus.AVAILABLE) {
+            slot.setOnMouseClicked(event -> {
+                if (selectedDoctor == null) {
+                    showAlert("Select Doctor", "Please select a doctor first.");
+                    return;
+                }
+                handleTimeSlotSelection(date, time);
+            });
+            slot.setStyle(slot.getStyle() + "-fx-cursor: hand;");
+        }
+
+        return slot;
+    }
+    
+    private void handleTimeSlotSelection(LocalDate date, String time) {
+        selectedDate = date;
+        selectedTime = time;
+        showingAppointmentTypes = true;
+        
+        // Refresh the content to show appointment type selection
+        VBox container = getAppointmentContentContainer();
+        if (container != null) {
+            loadBookAppointmentContent(container);
+        }
+    }
+    
+    private void loadAppointmentTypeSelection(VBox container) {
+        container.getChildren().clear();
+        
+        Label header = new Label("Select Appointment Type");
+        header.getStyleClass().add("card-title");
+        
+        // Show selected info
+        HBox selectionInfo = new HBox(20);
+        selectionInfo.setAlignment(Pos.CENTER);
+        selectionInfo.setPadding(new Insets(15));
+        selectionInfo.getStyleClass().add("selection-info");
+        
+        Label doctorInfo = new Label("Doctor: " + selectedDoctor);
+        doctorInfo.getStyleClass().add("selection-text");
+        
+        Label dateInfo = new Label("Date: " + selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")));
+        dateInfo.getStyleClass().add("selection-text");
+        
+        Label timeInfo = new Label("Time: " + selectedTime);
+        timeInfo.getStyleClass().add("selection-text");
+        
+        Button backBtn = new Button("← Back to Calendar");
+        backBtn.getStyleClass().add("hero-button-secondary");
+        backBtn.setOnAction(e -> {
+            showingAppointmentTypes = false;
+            selectedDate = null;
+            selectedTime = null;
+            loadBookAppointmentContent(container);
+        });
+        
+        selectionInfo.getChildren().addAll(doctorInfo, dateInfo, timeInfo, backBtn);
+        
+        // Appointment type selection
+        VBox typeSection = new VBox(20);
+        typeSection.setAlignment(Pos.CENTER);
+        
+        Label typeHeader = new Label("Choose Appointment Type:");
+        typeHeader.getStyleClass().add("section-subtitle");
+        typeHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+        
+        GridPane typeOptions = new GridPane();
+        typeOptions.setHgap(15);
+        typeOptions.setVgap(15);
+        typeOptions.setAlignment(Pos.CENTER);
         
         VBox eyeExamCard = createQuickBookCard("Eye Examination", "Comprehensive eye check");
         VBox checkupCard = createQuickBookCard("Regular Checkup", "Routine health assessment");
         VBox followupCard = createQuickBookCard("Follow-up Visit", "Post-treatment consultation");
         VBox lensCard = createQuickBookCard("Contact Lens Fitting", "Lens measurement & fitting");
         
-        quickOptions.add(eyeExamCard, 0, 0);
-        quickOptions.add(checkupCard, 1, 0);
-        quickOptions.add(followupCard, 0, 1);
-        quickOptions.add(lensCard, 1, 1);
+        typeOptions.add(eyeExamCard, 0, 0);
+        typeOptions.add(checkupCard, 1, 0);
+        typeOptions.add(followupCard, 0, 1);
+        typeOptions.add(lensCard, 1, 1);
         
-        // Main booking button
-        Button mainBookBtn = new Button("Open Calendar & Book Appointment");
-        mainBookBtn.getStyleClass().add("hero-button-primary");
-        mainBookBtn.setPrefWidth(300);
-        mainBookBtn.setOnAction(e -> handleAppointment());
+        // Confirm button
+        Button confirmBtn = new Button("Confirm Appointment");
+        confirmBtn.getStyleClass().add("hero-button-primary");
+        confirmBtn.setPrefWidth(200);
+        confirmBtn.setOnAction(e -> {
+            if (selectedAppointmentType == null) {
+                showAlert("Select Type", "Please select an appointment type.");
+                return;
+            }
+            confirmAppointmentBooking();
+        });
         
-        bookingSection.getChildren().addAll(instructionLabel, quickOptions, mainBookBtn);
-        container.getChildren().addAll(bookHeader, bookingSection);
+        typeSection.getChildren().addAll(typeHeader, typeOptions, confirmBtn);
+        container.getChildren().addAll(header, selectionInfo, typeSection);
     }
     
-    private VBox createQuickBookCard(String title, String description) {
-        VBox card = new VBox(8);
-        card.getStyleClass().add("service-card");
-        card.setAlignment(Pos.CENTER);
-        card.setPrefWidth(180);
-        card.setPrefHeight(120);
-        card.setOnMouseClicked(e -> {
-            showAlert("Quick Book", "Opening calendar for: " + title);
-            handleAppointment();
-        });
-        card.setStyle(card.getStyle() + "-fx-cursor: hand;");
-        
-        Label titleLabel = new Label(title);
-        titleLabel.getStyleClass().add("card-title");
-        titleLabel.setAlignment(Pos.CENTER);
-        
-        Label descLabel = new Label(description);
-        descLabel.getStyleClass().add("card-description");
-        descLabel.setAlignment(Pos.CENTER);
-        
-        card.getChildren().addAll(titleLabel, descLabel);
-        return card;
-    }
+    private void confirmAppointmentBooking() {
+        // Show confirmation dialog with notes
+        Alert bookingDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        bookingDialog.setTitle("Confirm Appointment");
+        bookingDialog.setHeaderText("Finalize Your Appointment");
 
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+
+        Label summaryLabel = new Label("Appointment Summary:");
+        summaryLabel.getStyleClass().add("card-title");
+
+        Label doctorLabel = new Label("Doctor: " + selectedDoctor);
+        Label dateLabel = new Label("Date: " + selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")));
+        Label timeLabel = new Label("Time: " + selectedTime);
+        Label typeLabel = new Label("Type: " + selectedAppointmentType);
+
+        Label notesLabel = new Label("Additional Notes (Optional):");
+        notesLabel.getStyleClass().add("field-label");
+
+        TextArea notesArea = new TextArea();
+        notesArea.setPrefRowCount(3);
+        notesArea.setPromptText("Enter any additional information or symptoms...");
+
+        content.getChildren().addAll(summaryLabel, doctorLabel, dateLabel, timeLabel, typeLabel, notesLabel, notesArea);
+        bookingDialog.getDialogPane().setContent(content);
+
+        bookingDialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                showAlert("Success", "Appointment booked successfully!\n\n" +
+                    "Doctor: " + selectedDoctor + "\n" +
+                    "Date: " + selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "\n" +
+                    "Time: " + selectedTime + "\n" +
+                    "Type: " + selectedAppointmentType);
+                
+                // Reset all selections
+                resetBookingSelections();
+                
+                // Go back to calendar view
+                VBox container = getAppointmentContentContainer();
+                if (container != null) {
+                    loadBookAppointmentContent(container);
+                }
+            }
+        });
+    }
+    
+    private void resetBookingSelections() {
+        selectedDoctor = null;
+        selectedAppointmentType = null;
+        selectedDate = null;
+        selectedTime = null;
+        showingAppointmentTypes = false;
+        
+        if (selectedDoctorCard != null) {
+            selectedDoctorCard.getStyleClass().remove("compact-doctor-card-selected");
+            selectedDoctorCard = null;
+        }
+        if (selectedTypeCard != null) {
+            selectedTypeCard.getStyleClass().remove("appointment-type-card-selected");
+            selectedTypeCard = null;
+        }
+    }
+    
+    private VBox getAppointmentContentContainer() {
+        try {
+            ScrollPane scrollPane = (ScrollPane) appointmentsTabContent.getChildren().get(0);
+            VBox scrollableContent = (VBox) scrollPane.getContent();
+            return (VBox) scrollableContent.getChildren().get(2); // Content container
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
     private void loadUpcomingAppointments(VBox container) {
         container.getChildren().clear();
         
@@ -901,5 +1243,36 @@ public class DashboardController implements Initializable {
         
         row.getChildren().addAll(labelText, valueText);
         return row;
+    }
+    
+    private VBox createQuickBookCard(String title, String description) {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("appointment-type-card");
+        card.setAlignment(Pos.CENTER);
+        card.setPrefWidth(180);
+        card.setPrefHeight(100);
+        
+        card.setOnMouseClicked(e -> {
+            // Remove selection from previous card
+            if (selectedTypeCard != null) {
+                selectedTypeCard.getStyleClass().remove("appointment-type-card-selected");
+            }
+            
+            // Select this card
+            selectedAppointmentType = title;
+            selectedTypeCard = card;
+            card.getStyleClass().add("appointment-type-card-selected");
+        });
+        
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("card-title");
+        titleLabel.setAlignment(Pos.CENTER);
+        
+        Label descLabel = new Label(description);
+        descLabel.getStyleClass().add("card-description");
+        descLabel.setAlignment(Pos.CENTER);
+        
+        card.getChildren().addAll(titleLabel, descLabel);
+        return card;
     }
 }
