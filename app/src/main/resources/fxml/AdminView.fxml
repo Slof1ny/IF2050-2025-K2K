@@ -140,7 +140,6 @@
                                             <VBox spacing="5.0">
                                                 <children>
                                                     <Label text="Product Management" styleClass="admin-card-title" />
-                                                    <Label text="Manage inventory, add new products, and update stock" styleClass="admin-card-subtitle" />
                                                 </children>
                                             </VBox>
                                         </children>
