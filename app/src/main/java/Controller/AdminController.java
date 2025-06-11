@@ -3,6 +3,8 @@ package Controller;
 import Database.Database;
 import Model.Dokter;
 import Model.Produk;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -14,6 +16,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
@@ -63,6 +66,16 @@ public class AdminController {
     private Label notificationLabel;    private Database db = new Database();    @FXML
     public void initialize() {
         try {
+            System.out.println("AdminController initializing...");
+            
+            // Check if essential FXML components are loaded
+            System.out.println("Checking FXML components:");
+            System.out.println("- addDoctorButton: " + (addDoctorButton != null ? "OK" : "NULL"));
+            System.out.println("- doctorNameField: " + (doctorNameField != null ? "OK" : "NULL"));
+            System.out.println("- doctorSpesialisField: " + (doctorSpesialisField != null ? "OK" : "NULL"));
+            System.out.println("- doctorPasswordField: " + (doctorPasswordField != null ? "OK" : "NULL"));
+            System.out.println("- doctorTable: " + (doctorTable != null ? "OK" : "NULL"));
+            
             // Initialize statistics
             loadStatistics();
             
@@ -80,8 +93,12 @@ public class AdminController {
             setupButtonHandlers();
             
             // Initialize notification
-            notificationLabel.setVisible(false);
-            notificationLabel.setManaged(false);
+            if (notificationLabel != null) {
+                notificationLabel.setVisible(false);
+                notificationLabel.setManaged(false);
+            }
+            
+            System.out.println("AdminController initialized successfully");
         } catch (Exception e) {
             System.err.println("Error initializing AdminController: " + e.getMessage());
             e.printStackTrace();
@@ -239,15 +256,34 @@ public class AdminController {
         imageView.setImage(null);
         imageView.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #dee2e6; -fx-border-width: 2px; -fx-border-style: dashed; -fx-border-radius: 8px;");
     }    private void setupButtonHandlers() {
-        addProductButton.setOnAction(e -> handleAddProduct());
+        // Product management buttons
+        if (addProductButton != null) {
+            addProductButton.setOnAction(e -> handleAddProduct());
+        }
         if (addNewProductButton != null) {
             addNewProductButton.setOnAction(e -> handleAddProduct());
         }
-        editProductButton.setOnAction(e -> handleEditSelectedProduct());
-        deleteProductButton.setOnAction(e -> handleDeleteSelectedProduct());
-        addDoctorButton.setOnAction(e -> handleAddDoctor());
-        editDoctorButton.setOnAction(e -> handleEditSelectedDoctor());
-        removeDoctorButton.setOnAction(e -> handleRemoveSelectedDoctor());
+        if (editProductButton != null) {
+            editProductButton.setOnAction(e -> handleEditSelectedProduct());
+        }
+        if (deleteProductButton != null) {
+            deleteProductButton.setOnAction(e -> handleDeleteSelectedProduct());
+        }
+        
+        // Doctor management buttons
+        if (addDoctorButton != null) {
+            addDoctorButton.setOnAction(e -> handleAddDoctor());
+            System.out.println("Add Doctor button handler set successfully");
+        } else {
+            System.err.println("WARNING: addDoctorButton is null!");
+        }
+        
+        if (editDoctorButton != null) {
+            editDoctorButton.setOnAction(e -> handleEditSelectedDoctor());
+        }
+        if (removeDoctorButton != null) {
+            removeDoctorButton.setOnAction(e -> handleRemoveSelectedDoctor());
+        }
     }
     
     private void loadProdukToTable() {
@@ -472,49 +508,69 @@ public class AdminController {
             showNotification("Please select a doctor to remove.");
         }
     }    private void handleAddDoctor() {
-        String nama = doctorNameField.getText();
-        String spesialis = doctorSpesialisField.getText();
-        String password = doctorPasswordField.getText();
-        
-        if (nama.isEmpty() || spesialis.isEmpty() || password.isEmpty()) {
-            showNotification("Name, specialization, and password are required fields.");
-            return;
-        }
-        
-        Dokter dokter = new Dokter(nama, spesialis, password);
-        boolean success = false;
         try {
-            success = db.addDokter(dokter);
-        } catch (Exception ex) {
-            showNotification("SQL Error: " + ex.getMessage());
-            ex.printStackTrace();
-        }
-        if (success) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Success");
-            alert.setHeaderText(null);
-            alert.setContentText("Doctor added successfully!");
-            alert.showAndWait();
-            doctorNameField.clear();
-            doctorSpesialisField.clear();
-            doctorPasswordField.clear();
-            loadDoctorToTable();
-            loadStatistics();
-        } else if (!nama.isEmpty() && !spesialis.isEmpty() && !password.isEmpty()) {
-            showNotification("Failed to add doctor. Cek konsol untuk detail error.");
+            // Get input values
+            String nama = doctorNameField.getText().trim();
+            String spesialis = doctorSpesialisField.getText().trim();
+            String password = doctorPasswordField.getText().trim();
+            
+            // Validate input
+            if (nama.isEmpty() || spesialis.isEmpty() || password.isEmpty()) {
+                showNotification("Name, specialization, and password are required fields.");
+                return;
+            }
+            
+            // Create doctor object
+            Dokter dokter = new Dokter(nama, spesialis, password);
+            System.out.println("Attempting to add doctor: " + dokter.getNama() + " - " + dokter.getSpesialisasi());
+            
+            // Add to database
+            boolean success = db.addDokter(dokter);
+            
+            if (success) {
+                // Show success message
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Success");
+                alert.setHeaderText(null);
+                alert.setContentText("Doctor " + nama + " added successfully!");
+                alert.showAndWait();
+                
+                // Clear form fields
+                doctorNameField.clear();
+                doctorSpesialisField.clear();
+                doctorPasswordField.clear();
+                
+                // Refresh data
+                loadDoctorToTable();
+                loadStatistics();
+                
+                showNotification("Doctor added successfully!");
+                System.out.println("Doctor added successfully with ID: " + dokter.getId());
+            } else {
+                showNotification("Failed to add doctor. Please check the console for errors.");
+                System.err.println("Failed to add doctor to database");
+            }
+        } catch (Exception e) {
+            String errorMessage = "Error adding doctor: " + e.getMessage();
+            showNotification(errorMessage);
+            System.err.println(errorMessage);
+            e.printStackTrace();
         }
     }    private void showNotification(String message) {
-        notificationLabel.setText(message);
-        notificationLabel.setVisible(true);
-        notificationLabel.setManaged(true);
-        
-        // Hide notification after 3 seconds
-        javafx.animation.Timeline timeline = new javafx.animation.Timeline(
-            new javafx.animation.KeyFrame(javafx.util.Duration.seconds(3), e -> {
-                notificationLabel.setVisible(false);
-                notificationLabel.setManaged(false);
-            })
-        );
-        timeline.play();
+        if (notificationLabel != null) {
+            notificationLabel.setText(message);
+            notificationLabel.setVisible(true);
+            notificationLabel.setManaged(true);
+            
+            // Hide notification after 3 seconds
+            javafx.animation.Timeline timeline = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(3), e -> {
+                    notificationLabel.setVisible(false);
+                    notificationLabel.setManaged(false);
+                })
+            );
+            timeline.play();
+        } else {
+            System.out.println("Notification: " + message);        }
     }
 }

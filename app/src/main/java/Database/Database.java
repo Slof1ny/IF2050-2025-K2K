@@ -534,30 +534,40 @@ public class Database {
             System.err.println("Error joining resep and pelanggan: " + e.getMessage());
         }
         return resepInfoList;
-    }
-
-    // ==================== DOKTER CRUD OPERATIONS ====================
+    }    // ==================== DOKTER CRUD OPERATIONS ====================
     public boolean addDokter(Dokter dokter) {
         String insertSQL = "INSERT INTO dokter (nama, spesialisasi, password) VALUES (?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            System.out.println("Adding doctor: " + dokter.getNama() + " with specialization: " + dokter.getSpesialisasi());
+            
             stmt.setString(1, dokter.getNama());
             stmt.setString(2, dokter.getSpesialisasi());
             stmt.setString(3, dokter.getPassword());
+            
             int rowsAffected = stmt.executeUpdate();
+            System.out.println("Rows affected: " + rowsAffected);
+            
             if (rowsAffected > 0) {
+                // Get the last inserted ID
                 String getLastIdSQL = "SELECT last_insert_rowid()";
                 try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
                      ResultSet rs = lastIdStmt.executeQuery()) {
                     if (rs.next()) {
-                        dokter.setId(rs.getInt(1));
+                        int newId = rs.getInt(1);
+                        dokter.setId(newId);
+                        System.out.println("Doctor added successfully with ID: " + newId);
                     }
                 }
                 return true;
+            } else {
+                System.err.println("No rows were affected when adding doctor");
+                return false;
             }
         } catch (SQLException e) {
             System.err.println("Error adding dokter: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     public List<Dokter> getAllDokter() {
