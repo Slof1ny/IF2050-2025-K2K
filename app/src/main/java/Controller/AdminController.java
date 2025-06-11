@@ -8,7 +8,10 @@ import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -16,7 +19,9 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 import javafx.util.Duration;
+import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
@@ -46,14 +51,15 @@ public class AdminController {
     @FXML
     private TableView<Dokter> doctorTable;
     @FXML
-    private TableColumn<Dokter, String> doctorNameCol, doctorSpecCol, doctorEmailCol;
-      // Buttons
+    private TableColumn<Dokter, String> doctorNameCol, doctorSpecCol, doctorEmailCol;    // Buttons
     @FXML
     private Button addProductButton, editProductButton, deleteProductButton;
     @FXML
     private Button addNewProductButton;
     @FXML
     private Button addDoctorButton, editDoctorButton, removeDoctorButton;
+    @FXML
+    private Button logoutButton;
     
     // Form Fields
     @FXML
@@ -280,9 +286,13 @@ public class AdminController {
         
         if (editDoctorButton != null) {
             editDoctorButton.setOnAction(e -> handleEditSelectedDoctor());
-        }
-        if (removeDoctorButton != null) {
+        }        if (removeDoctorButton != null) {
             removeDoctorButton.setOnAction(e -> handleRemoveSelectedDoctor());
+        }
+        
+        // Logout button
+        if (logoutButton != null) {
+            logoutButton.setOnAction(e -> handleLogout());
         }
     }
     
@@ -569,8 +579,38 @@ public class AdminController {
                     notificationLabel.setManaged(false);
                 })
             );
-            timeline.play();
-        } else {
+            timeline.play();        } else {
             System.out.println("Notification: " + message);        }
+    }
+    
+    // Logout handler
+    private void handleLogout() {
+        try {
+            // Show confirmation dialog
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Logout Confirmation");
+            alert.setHeaderText("Are you sure you want to logout?");
+            alert.setContentText("You will be redirected to the login page.");
+            
+            if (alert.showAndWait().get() == ButtonType.OK) {
+                // Get current stage
+                Stage stage = (Stage) logoutButton.getScene().getWindow();
+                
+                // Load login view
+                Parent loginRoot = FXMLLoader.load(getClass().getResource("/fxml/LoginView.fxml"));
+                Scene loginScene = new Scene(loginRoot, 950, 600);
+                
+                // Set scene and show
+                stage.setScene(loginScene);
+                stage.setTitle("OPTIK XYZ - APPS");
+                stage.centerOnScreen();
+                
+                showNotification("Logged out successfully!");
+            }
+        } catch (IOException e) {
+            System.err.println("Error during logout: " + e.getMessage());
+            e.printStackTrace();
+            showNotification("Error occurred during logout.");
+        }
     }
 }
