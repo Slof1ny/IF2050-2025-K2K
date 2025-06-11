@@ -1031,7 +1031,7 @@ public class Database {
             stmt.setTimestamp(3, new Timestamp(laporan.getPeriodeSelesai().getTime()));
             stmt.setTimestamp(4, new Timestamp(laporan.getTanggalDibuat().getTime()));
             stmt.setString(5, laporan.getKontenLaporan());
-            stmt.setInt(6, laporan.getDibuatOleh());
+            stmt.setInt(6, laporan.getDibuatOleh().getID());
             
             int rowsAffected = stmt.executeUpdate();
             
@@ -1061,6 +1061,7 @@ public class Database {
              ResultSet rs = stmt.executeQuery()) {
             
             while (rs.next()) {
+                Admin admin = getAdminById(rs.getInt("dibuat_oleh"));
                 Laporan laporan = new Laporan(
                     rs.getInt("id_laporan"),
                     rs.getString("tipe_laporan"),
@@ -1068,7 +1069,7 @@ public class Database {
                     new java.util.Date(rs.getTimestamp("periode_selesai").getTime()),
                     new java.util.Date(rs.getTimestamp("tanggal_dibuat").getTime()),
                     rs.getString("konten_laporan"),
-                    rs.getInt("dibuat_oleh")
+                    admin
                 );
                 laporanList.add(laporan);
             }
@@ -1088,6 +1089,7 @@ public class Database {
             
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
+                    Admin admin = getAdminById(rs.getInt("dibuat_oleh"));
                     return new Laporan(
                         rs.getInt("id_laporan"),
                         rs.getString("tipe_laporan"),
@@ -1095,7 +1097,7 @@ public class Database {
                         new java.util.Date(rs.getTimestamp("periode_selesai").getTime()),
                         new java.util.Date(rs.getTimestamp("tanggal_dibuat").getTime()),
                         rs.getString("konten_laporan"),
-                        rs.getInt("dibuat_oleh")
+                        admin
                     );
                 }
             }
@@ -1116,6 +1118,7 @@ public class Database {
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
+                    Admin admin = getAdminById(rs.getInt("dibuat_oleh"));
                     Laporan laporan = new Laporan(
                         rs.getInt("id_laporan"),
                         rs.getString("tipe_laporan"),
@@ -1123,7 +1126,7 @@ public class Database {
                         new java.util.Date(rs.getTimestamp("periode_selesai").getTime()),
                         new java.util.Date(rs.getTimestamp("tanggal_dibuat").getTime()),
                         rs.getString("konten_laporan"),
-                        rs.getInt("dibuat_oleh")
+                        admin
                     );
                     laporanList.add(laporan);
                 }
