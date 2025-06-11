@@ -1,0 +1,271 @@
+/* --- Root and Main Background --- */
+.root {
+    -fx-font-family: 'Inter', 'Arial', sans-serif;
+}
+
+.doctor-dashboard {
+    -fx-background-color: radial-gradient(center 50% 50%, radius 80%, rgba(240, 245, 255, 1), rgba(220, 230, 250, 0.5));
+    -fx-font-family: 'Inter', 'Arial', sans-serif;
+}
+
+/* --- Header Section --- */
+.header-section {
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-border-color: rgba(63, 81, 181, 0.1);
+    -fx-border-width: 0 0 2 0;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 20, 0, 0, 5);
+}
+
+.welcome-banner {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1a237e;
+}
+
+.logout-button {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 12 24;
+    -fx-background-radius: 10px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(231, 76, 60, 0.3), 10, 0, 0, 2);
+}
+
+.logout-button:hover {
+    -fx-background-color: #c0392b;
+    -fx-effect: dropshadow(gaussian, rgba(231, 76, 60, 0.4), 15, 0, 0, 3);
+}
+
+/* --- Navigation Tabs --- */
+.nav-tabs {
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-border-color: rgba(63, 81, 181, 0.1);
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 10 20;
+}
+
+.nav-tab {
+    -fx-background-color: rgba(255, 255, 255, 0.7);
+    -fx-text-fill: #546e7a;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 12 25;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-border-color: rgba(63, 81, 181, 0.2);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 5, 0, 0, 1);
+    -fx-margin: 0 5;
+}
+
+.nav-tab:hover {
+    -fx-background-color: rgba(63, 81, 181, 0.1);
+    -fx-text-fill: #3f51b5;
+    -fx-border-color: rgba(63, 81, 181, 0.4);
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.2), 10, 0, 0, 2);
+}
+
+/* Active tab styling - applied via setActiveTab method */
+.nav-tab-active {
+    -fx-background-color: #3f51b5 !important;
+    -fx-text-fill: white !important;
+    -fx-border-color: #3f51b5 !important;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.4), 15, 0, 0, 3) !important;
+}
+
+/* --- Section Headers --- */
+.section-header {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1a237e;
+    -fx-padding: 0 0 10 0;
+}
+
+/* --- Card Styling (similar to login card) --- */
+.date-section, .appointments-section, .quick-actions {
+    -fx-background-color: rgba(255, 255, 255, 0.85);
+    -fx-background-radius: 20px;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 30, 0, 0, 10);
+    -fx-border-color: rgba(255, 255, 255, 0.5);
+    -fx-border-width: 1px;
+    -fx-border-radius: 20px;
+}
+
+/* --- Field Labels --- */
+.field-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+    -fx-text-fill: #546e7a;
+    -fx-padding: 8 0 3 0;
+}
+
+/* --- Patient Cards --- */
+.patient-card {
+    -fx-background-color: #f1f5f9;
+    -fx-padding: 20;
+    -fx-background-radius: 15px;
+    -fx-border-color: rgba(63, 81, 181, 0.1);
+    -fx-border-width: 1;
+    -fx-border-radius: 15px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 10, 0, 0, 2);
+}
+
+.patient-name {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1a237e;
+    -fx-padding: 0 0 5 0;
+}
+
+.patient-email {
+    -fx-font-size: 14px;
+    -fx-text-fill: #546e7a;
+    -fx-padding: 0 0 5 0;
+}
+
+.appointment-type {
+    -fx-font-size: 14px;
+    -fx-text-fill: #3f51b5;
+    -fx-font-weight: 500;
+    -fx-padding: 0 0 10 0;
+}
+
+/* --- Buttons (similar to login button styling) --- */
+.view-button {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 10 20;
+    -fx-background-radius: 10px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(39, 174, 96, 0.3), 10, 0, 0, 2);
+}
+
+.view-button:hover {
+    -fx-background-color: #2ecc71;
+    -fx-effect: dropshadow(gaussian, rgba(39, 174, 96, 0.4), 15, 0, 0, 3);
+}
+
+.details-button {
+    -fx-background-color: #3f51b5;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 10 20;
+    -fx-background-radius: 10px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.3), 10, 0, 0, 2);
+}
+
+.details-button:hover {
+    -fx-background-color: #303f9f;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.4), 15, 0, 0, 3);
+}
+
+.action-button {
+    -fx-background-color: #3f51b5;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 12 20;
+    -fx-background-radius: 10px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.3), 10, 0, 0, 2);
+}
+
+.action-button:hover {
+    -fx-background-color: #303f9f;
+    -fx-effect: dropshadow(gaussian, rgba(63, 81, 181, 0.4), 15, 0, 0, 3);
+}
+
+/* --- Statistics Cards --- */
+.stat-card {
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-padding: 25;
+    -fx-background-radius: 15px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 20, 0, 0, 5);
+    -fx-alignment: center;
+    -fx-border-color: rgba(63, 81, 181, 0.1);
+    -fx-border-width: 1;
+    -fx-border-radius: 15px;
+}
+
+.stat-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-text-fill: #546e7a;
+    -fx-padding: 0 0 5 0;
+}
+
+.stat-number {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1a237e;
+}
+
+/* --- Date Picker Styling (similar to text fields) --- */
+.date-picker {
+    -fx-pref-height: 45px;
+    -fx-font-size: 14px;
+    -fx-background-color: #f1f5f9;
+    -fx-border-color: transparent;
+    -fx-border-width: 0px;
+    -fx-background-radius: 10px;
+}
+
+.date-picker:focused {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #3f51b5;
+    -fx-border-width: 1.5px;
+}
+
+.date-picker .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+/* --- ScrollPane Styling --- */
+.appointments-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 15px;
+}
+
+.appointments-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.appointments-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 8px;
+    -fx-background-radius: 4px;
+}
+
+.appointments-scroll .scroll-bar:vertical .track {
+    -fx-background-color: rgba(63, 81, 181, 0.1);
+    -fx-background-radius: 4px;
+}
+
+.appointments-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(63, 81, 181, 0.4);
+    -fx-background-radius: 4px;
+}
+
+.appointments-scroll .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: rgba(63, 81, 181, 0.6);
+}
+
+.appointments-scroll .scroll-bar:vertical .increment-button,
+.appointments-scroll .scroll-bar:vertical .decrement-button {
+    -fx-background-color: transparent;
+    -fx-pref-height: 0;
+}
+
+.appointments-scroll .corner {
+    -fx-background-color: transparent;
+}

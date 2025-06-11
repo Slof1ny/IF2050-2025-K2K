@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
 
 public class Database {
     private static final String URL = "jdbc:sqlite:user.db";
@@ -1942,4 +1943,85 @@ public class Database {
         }
         return false;
     }
+
+      public int getTodayPatientsCount(String doctorName, LocalDate date) {
+    String sql = "SELECT COUNT(*) FROM appointments WHERE doctor_name = ? AND DATE(appointment_date) = ?";
+    try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        stmt.setString(1, doctorName);
+        stmt.setString(2, date.toString());
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt(1);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return 0;
+}
+
+public int getPendingAppointmentsCount(String doctorName, LocalDate date) {
+    String sql = "SELECT COUNT(*) FROM appointments WHERE doctor_name = ? AND DATE(appointment_date) = ? AND status = 'pending'";
+    try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        stmt.setString(1, doctorName);
+        stmt.setString(2, date.toString());
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt(1);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return 0;
+}
+
+public int getCompletedAppointmentsCount(String doctorName, LocalDate date) {
+    String sql = "SELECT COUNT(*) FROM appointments WHERE doctor_name = ? AND DATE(appointment_date) = ? AND status = 'completed'";
+    try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        stmt.setString(1, doctorName);
+        stmt.setString(2, date.toString());
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt(1);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return 0;
+}
+
+public int getTotalPatientsCount(String doctorName) {
+    String sql = "SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE doctor_name = ?";
+    try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        stmt.setString(1, doctorName);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt(1);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return 0;
+}
+
+public List<Map<String, Object>> getTodayAppointments(String doctorName, LocalDate date) {
+    List<Map<String, Object>> appointments = new ArrayList<>();
+    String sql = "SELECT patient_name, patient_email, appointment_type FROM appointments WHERE doctor_name = ? AND DATE(appointment_date) = ? ORDER BY appointment_time";
+    
+    try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        stmt.setString(1, doctorName);
+        stmt.setString(2, date.toString());
+        ResultSet rs = stmt.executeQuery();
+        
+        while (rs.next()) {
+            Map<String, Object> appointment = new HashMap<>();
+            appointment.put("patient_name", rs.getString("patient_name"));
+            appointment.put("patient_email", rs.getString("patient_email"));
+            appointment.put("appointment_type", rs.getString("appointment_type"));
+            appointments.add(appointment);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return appointments;
+}
 }
