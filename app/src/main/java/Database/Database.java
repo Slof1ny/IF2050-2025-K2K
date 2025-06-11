@@ -1942,4 +1942,49 @@ public class Database {
         }
         return false;
     }
+    
+    // Method untuk menghitung total order dengan status 'Selesai'
+    public int getTotalOrderSelesai() {
+        String sql = "SELECT COUNT(DISTINCT p.id_pesanan) as total FROM pesanan p WHERE p.status = 'Selesai'";
+        try (PreparedStatement stmt = connection.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt("total");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error counting total order selesai: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    // Method untuk menghitung total revenue dari pesanan yang statusnya 'Selesai'
+    public double getTotalRevenueSelesai() {
+        String sql = "SELECT SUM(dp.kuantitas * pr.harga) as revenue FROM pesanan p " +
+                "JOIN detail_pesanan dp ON p.id_pesanan = dp.id_pesanan " +
+                "JOIN produk pr ON dp.id_produk = pr.id " +
+                "WHERE p.status = 'Selesai'";
+        try (PreparedStatement stmt = connection.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getDouble("revenue");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error counting total revenue selesai: " + e.getMessage());
+        }
+        return 0.0;
+    }
+
+    // Method untuk mendapatkan ID produk terakhir yang baru saja diinsert
+    public Integer getLastProdukId() {
+        String sql = "SELECT MAX(id) FROM produk";
+        try (PreparedStatement stmt = connection.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting last produk id: " + e.getMessage());
+        }
+        return null;
+    }
 }

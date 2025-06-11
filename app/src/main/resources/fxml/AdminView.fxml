@@ -109,8 +109,7 @@
                                     <Label text="Product Catalog" styleClass="admin-section-title" />
                                     <Region HBox.hgrow="ALWAYS" />
                                     <Button fx:id="addNewProductButton" text="Add New Product" styleClass="admin-button-primary" />
-                                    <Button text="Grid View" styleClass="admin-view-button-active" />
-                                    <Button text="List View" styleClass="admin-view-button" />
+                      
                                 </children>
                             </HBox>                            <!-- Product Cards Grid -->
                             <ScrollPane fitToWidth="true" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="product-grid-scroll">
@@ -158,16 +157,6 @@
                                             <TableColumn fx:id="categoryCol" text="Category" prefWidth="200" styleClass="admin-table-column" />
                                         </columns>
                                     </TableView>
-                                    
-                                    <HBox spacing="15.0" alignment="CENTER_LEFT">
-                                        <children>
-                                            <Button text="Add Product" fx:id="addProductButton" styleClass="admin-button-primary" />
-                                            <Button text="Edit Product" fx:id="editProductButton" styleClass="admin-button-secondary" />
-                                            <Button text="Delete Product" fx:id="deleteProductButton" styleClass="admin-button-danger" />
-                                            <Region HBox.hgrow="ALWAYS" />
-                                            <Button text="Export Data" styleClass="admin-button-outline" />
-                                        </children>
-                                    </HBox>
                                 </children>
                             </VBox>
                             
@@ -199,8 +188,6 @@
                                                     <TextField fx:id="doctorNameField" promptText="Doctor Name" styleClass="admin-input-field" />
                                                     <TextField fx:id="doctorSpesialisField" promptText="Specialization" styleClass="admin-input-field" />
                                                     <PasswordField fx:id="doctorPasswordField" promptText="Password" styleClass="admin-input-field" />
-                                                    <TextField fx:id="doctorEmailField" promptText="Email Address" styleClass="admin-input-field" />
-                                                    <TextField fx:id="doctorPhoneField" promptText="Phone Number" styleClass="admin-input-field" />
                                                     <Button text="Add Doctor" fx:id="addDoctorButton" styleClass="admin-button-primary" maxWidth="Infinity" />
                                                 </children>
                                             </VBox>
@@ -216,12 +203,6 @@
                                                             <TableColumn fx:id="doctorEmailCol" text="Email" prefWidth="200" styleClass="admin-table-column" />
                                                         </columns>
                                                     </TableView>
-                                                    <HBox spacing="10.0">
-                                                        <children>
-                                                            <Button text="Edit Doctor" fx:id="editDoctorButton" styleClass="admin-button-secondary" />
-                                                            <Button text="Remove Doctor" fx:id="removeDoctorButton" styleClass="admin-button-danger" />
-                                                        </children>
-                                                    </HBox>
                                                 </children>
                                             </VBox>
                                         </children>

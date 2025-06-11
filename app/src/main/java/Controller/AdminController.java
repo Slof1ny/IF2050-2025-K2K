@@ -10,6 +10,7 @@ import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -92,21 +93,19 @@ public class AdminController {
             // Get statistics from database
             List<Produk> products = db.getAllProduk();
             List<Dokter> doctors = db.getAllDokter();
-            
+
             // Update statistics labels
             totalProductsLabel.setText(String.valueOf(products.size()));
             totalDoctorsLabel.setText(String.valueOf(doctors.size()));
-            
-            // Calculate total revenue (example calculation)
-            double totalRevenue = products.stream()
-                .mapToDouble(p -> p.getHarga() * (100 - p.getStok())) // Assuming sold = 100 - current stock
-                .sum();
-              NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
-            totalRevenueLabel.setText(currencyFormat.format(totalRevenue).replace("IDR", "Rp"));
-            
-            // Mock total orders for now
-            totalOrdersLabel.setText("25");
-            
+
+            // Total order selesai
+            int totalOrderSelesai = db.getTotalOrderSelesai();
+            totalOrdersLabel.setText(String.valueOf(totalOrderSelesai));
+
+            // Total revenue dari pesanan selesai
+            double totalRevenue = db.getTotalRevenueSelesai();
+            NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
+            totalRevenueLabel.setText(nf.format(totalRevenue));
         } catch (Exception e) {
             System.err.println("Error loading statistics: " + e.getMessage());
         }
@@ -118,10 +117,10 @@ public class AdminController {
         hargaCol.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getHarga()));
         stokCol.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getStok()));
         categoryCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty("General")); // Default category since no category field
-          // Doctor table columns
+        // Doctor table columns
         doctorNameCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getNama()));
         doctorSpecCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getSpesialisasi()));
-        doctorEmailCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty("N/A")); // Since Dokter doesn't have email field
+        // Jangan set cellValueFactory untuk doctorEmailCol, biarkan kosong agar tidak tampil
     }
       private void loadProductCards() {
         try {
@@ -170,7 +169,7 @@ public class AdminController {
         
         // Load product image based on product ID
         try {
-            String imagePath = "/image/" + produk.getId() + ".png";
+            String imagePath = "/image/produk/" + produk.getId() + ".png";
             Image productImage = new Image(getClass().getResourceAsStream(imagePath));
             
             // Check if image was loaded successfully
@@ -267,8 +266,86 @@ public class AdminController {
     
     // Product Management Methods
     private void handleAddProduct() {
-        // TODO: Open add product dialog
-        showNotification("Add Product feature - Coming Soon!");
+        Dialog<Produk> dialog = new Dialog<>();
+        dialog.setTitle("Add New Product");
+        dialog.setHeaderText("Tambah Produk Baru");
+
+        // Form
+        Label nameLabel = new Label("Nama:");
+        TextField nameField = new TextField();
+        Label priceLabel = new Label("Harga:");
+        TextField priceField = new TextField();
+        Label stokLabel = new Label("Stok:");
+        TextField stokField = new TextField();
+        Label imageLabel = new Label("Gambar (PNG):");
+        TextField imagePathField = new TextField();
+        imagePathField.setEditable(false);
+        Button browseButton = new Button("Browse");
+        HBox imageBox = new HBox(8, imagePathField, browseButton);
+
+        final java.io.File[] selectedImage = {null};
+        browseButton.setOnAction(e -> {
+            javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+            fileChooser.setTitle("Pilih Gambar Produk (PNG)");
+            fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PNG Images", "*.png"));
+            java.io.File file = fileChooser.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
+            if (file != null && file.getName().toLowerCase().endsWith(".png")) {
+                imagePathField.setText(file.getAbsolutePath());
+                selectedImage[0] = file;
+            } else if (file != null) {
+                showNotification("File harus PNG!");
+            }
+        });
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+        grid.add(nameLabel, 0, 0); grid.add(nameField, 1, 0);
+        grid.add(priceLabel, 0, 1); grid.add(priceField, 1, 1);
+        grid.add(stokLabel, 0, 2); grid.add(stokField, 1, 2);
+        grid.add(imageLabel, 0, 3); grid.add(imageBox, 1, 3);
+        dialog.getDialogPane().setContent(grid);
+
+        ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == saveButtonType) {
+                try {
+                    String nama = nameField.getText();
+                    double harga = Double.parseDouble(priceField.getText());
+                    int stok = Integer.parseInt(stokField.getText());
+                    if (selectedImage[0] == null) {
+                        showNotification("Pilih gambar produk (PNG)!");
+                        return null;
+                    }
+                    Produk produkBaru = new Produk(null, nama, harga, stok);
+                    boolean success = db.addProduk(produkBaru);
+                    if (success) {
+                        // Ambil ID produk yang baru saja ditambahkan
+                        int idProduk = db.getLastProdukId();
+                        // Simpan gambar ke /image/produk/{id}.png
+                        java.nio.file.Path dest = java.nio.file.Paths.get(System.getProperty("user.dir"), "app", "src", "main", "resources", "image", "produk", idProduk + ".png");
+                        java.nio.file.Files.copy(selectedImage[0].toPath(), dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        produkBaru.setId(idProduk);
+                        return produkBaru;
+                    } else {
+                        showNotification("Gagal menambah produk!");
+                    }
+                } catch (Exception e) {
+                    showNotification("Input tidak valid atau gagal simpan gambar!");
+                }
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(produk -> {
+            loadProdukToTable();
+            loadProductCards();
+            loadStatistics();
+            showNotification("Produk berhasil ditambahkan!");
+        });
     }
     
     private void handleEditSelectedProduct() {
@@ -281,8 +358,58 @@ public class AdminController {
     }
     
     private void handleEditProduct(Produk produk) {
-        // TODO: Open edit product dialog
-        showNotification("Edit Product: " + produk.getNama() + " - Coming Soon!");
+        Dialog<Produk> dialog = new Dialog<>();
+        dialog.setTitle("Edit Product");
+        dialog.setHeaderText("Edit data produk: " + produk.getNama());
+
+        // Form
+        Label nameLabel = new Label("Nama:");
+        TextField nameField = new TextField(produk.getNama());
+        Label priceLabel = new Label("Harga:");
+        TextField priceField = new TextField(String.valueOf(produk.getHarga()));
+        Label stokLabel = new Label("Stok:");
+        TextField stokField = new TextField(String.valueOf(produk.getStok()));
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+        grid.add(nameLabel, 0, 0); grid.add(nameField, 1, 0);
+        grid.add(priceLabel, 0, 1); grid.add(priceField, 1, 1);
+        grid.add(stokLabel, 0, 2); grid.add(stokField, 1, 2);
+        dialog.getDialogPane().setContent(grid);
+
+        ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == saveButtonType) {
+                try {
+                    String nama = nameField.getText();
+                    double harga = Double.parseDouble(priceField.getText());
+                    int stok = Integer.parseInt(stokField.getText());
+                    produk.setNama(nama);
+                    produk.setHarga(harga);
+                    produk.setStok(stok);
+                    return produk;
+                } catch (Exception e) {
+                    showNotification("Input tidak valid!");
+                }
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(updatedProduk -> {
+            boolean success = db.updateProduk(updatedProduk);
+            if (success) {
+                showNotification("Produk berhasil diupdate!");
+                loadProdukToTable();
+                loadProductCards();
+                loadStatistics();
+            } else {
+                showNotification("Gagal update produk!");
+            }
+        });
     }
     
     private void handleDeleteSelectedProduct() {
@@ -295,12 +422,10 @@ public class AdminController {
     }
     
     private void handleDeleteProduct(Produk produk) {
-        // Confirm deletion
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Delete Product");
         alert.setHeaderText("Delete " + produk.getNama());
         alert.setContentText("Are you sure you want to delete this product?");
-        
         if (alert.showAndWait().get() == ButtonType.OK) {
             boolean success = db.deleteProduk(produk.getId());
             if (success) {
@@ -313,7 +438,6 @@ public class AdminController {
             }
         }
     }
-    
     // Doctor Management Methods
     private void handleEditSelectedDoctor() {
         Dokter selectedDoctor = doctorTable.getSelectionModel().getSelectedItem();
@@ -358,19 +482,26 @@ public class AdminController {
         }
         
         Dokter dokter = new Dokter(nama, spesialis, password);
-        
-        boolean success = db.addDokter(dokter);
+        boolean success = false;
+        try {
+            success = db.addDokter(dokter);
+        } catch (Exception ex) {
+            showNotification("SQL Error: " + ex.getMessage());
+            ex.printStackTrace();
+        }
         if (success) {
-            showNotification("Doctor added successfully!");
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Success");
+            alert.setHeaderText(null);
+            alert.setContentText("Doctor added successfully!");
+            alert.showAndWait();
             doctorNameField.clear();
             doctorSpesialisField.clear();
             doctorPasswordField.clear();
-            if (doctorEmailField != null) doctorEmailField.clear();
-            if (doctorPhoneField != null) doctorPhoneField.clear();
             loadDoctorToTable();
             loadStatistics();
-        } else {
-            showNotification("Failed to add doctor. Name might already exist.");
+        } else if (!nama.isEmpty() && !spesialis.isEmpty() && !password.isEmpty()) {
+            showNotification("Failed to add doctor. Cek konsol untuk detail error.");
         }
     }    private void showNotification(String message) {
         notificationLabel.setText(message);
