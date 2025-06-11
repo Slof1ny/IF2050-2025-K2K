@@ -307,90 +307,125 @@ public class AdminController {
         } catch (Exception e) {
             System.err.println("Error loading doctors to table: " + e.getMessage());
         }
-    }
-    
-    // Product Management Methods
+    }      // Product Management Methods
     private void handleAddProduct() {
+        System.out.println("DEBUG - handleAddProduct() called");
+        
         Dialog<Produk> dialog = new Dialog<>();
         dialog.setTitle("Add New Product");
         dialog.setHeaderText("Tambah Produk Baru");
 
-        // Form
-        Label nameLabel = new Label("Nama:");
+        // Form - hanya nama, harga, dan stok
+        Label nameLabel = new Label("Nama Produk:");
         TextField nameField = new TextField();
-        Label priceLabel = new Label("Harga:");
+        nameField.setPromptText("Masukkan nama produk");
+        
+        Label priceLabel = new Label("Harga (Rp):");
         TextField priceField = new TextField();
+        priceField.setPromptText("Contoh: 15000");
+        
         Label stokLabel = new Label("Stok:");
         TextField stokField = new TextField();
-        Label imageLabel = new Label("Gambar (PNG):");
-        TextField imagePathField = new TextField();
-        imagePathField.setEditable(false);
-        Button browseButton = new Button("Browse");
-        HBox imageBox = new HBox(8, imagePathField, browseButton);
-
-        final java.io.File[] selectedImage = {null};
-        browseButton.setOnAction(e -> {
-            javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-            fileChooser.setTitle("Pilih Gambar Produk (PNG)");
-            fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PNG Images", "*.png"));
-            java.io.File file = fileChooser.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
-            if (file != null && file.getName().toLowerCase().endsWith(".png")) {
-                imagePathField.setText(file.getAbsolutePath());
-                selectedImage[0] = file;
-            } else if (file != null) {
-                showNotification("File harus PNG!");
-            }
-        });
+        stokField.setPromptText("Contoh: 50");
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
-        grid.setVgap(10);
+        grid.setVgap(15);
         grid.setPadding(new Insets(20, 150, 10, 10));
-        grid.add(nameLabel, 0, 0); grid.add(nameField, 1, 0);
-        grid.add(priceLabel, 0, 1); grid.add(priceField, 1, 1);
-        grid.add(stokLabel, 0, 2); grid.add(stokField, 1, 2);
-        grid.add(imageLabel, 0, 3); grid.add(imageBox, 1, 3);
+        grid.add(nameLabel, 0, 0); 
+        grid.add(nameField, 1, 0);
+        grid.add(priceLabel, 0, 1); 
+        grid.add(priceField, 1, 1);
+        grid.add(stokLabel, 0, 2); 
+        grid.add(stokField, 1, 2);
+        
         dialog.getDialogPane().setContent(grid);
 
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
         dialog.setResultConverter(dialogButton -> {
+            System.out.println("DEBUG - Dialog button clicked: " + dialogButton);
             if (dialogButton == saveButtonType) {
                 try {
-                    String nama = nameField.getText();
-                    double harga = Double.parseDouble(priceField.getText());
-                    int stok = Integer.parseInt(stokField.getText());
-                    if (selectedImage[0] == null) {
-                        showNotification("Pilih gambar produk (PNG)!");
+                    String nama = nameField.getText().trim();
+                    String hargaText = priceField.getText().trim();
+                    String stokText = stokField.getText().trim();
+                    
+                    System.out.println("DEBUG - Form input:");
+                    System.out.println("- Nama: '" + nama + "'");
+                    System.out.println("- Harga text: '" + hargaText + "'");
+                    System.out.println("- Stok text: '" + stokText + "'");
+                    
+                    // Validasi input
+                    if (nama.isEmpty()) {
+                        showNotification("Nama produk tidak boleh kosong!");
                         return null;
                     }
+                    if (hargaText.isEmpty()) {
+                        showNotification("Harga tidak boleh kosong!");
+                        return null;
+                    }
+                    if (stokText.isEmpty()) {
+                        showNotification("Stok tidak boleh kosong!");
+                        return null;
+                    }
+                    
+                    double harga = Double.parseDouble(hargaText);
+                    int stok = Integer.parseInt(stokText);
+                    
+                    System.out.println("DEBUG - Parsed values:");
+                    System.out.println("- Harga: " + harga);
+                    System.out.println("- Stok: " + stok);
+                    
+                    if (harga <= 0) {
+                        showNotification("Harga harus lebih dari 0!");
+                        return null;
+                    }
+                    if (stok < 0) {
+                        showNotification("Stok tidak boleh negatif!");
+                        return null;
+                    }
+                    
+                    // Buat produk baru
                     Produk produkBaru = new Produk(null, nama, harga, stok);
+                    System.out.println("DEBUG - Created product object: " + produkBaru.getNama());
+                    
                     boolean success = db.addProduk(produkBaru);
+                    System.out.println("DEBUG - addProduk result: " + success);
+                    
                     if (success) {
-                        // Ambil ID produk yang baru saja ditambahkan
-                        int idProduk = db.getLastProdukId();
-                        // Simpan gambar ke /image/produk/{id}.png
-                        java.nio.file.Path dest = java.nio.file.Paths.get(System.getProperty("user.dir"), "app", "src", "main", "resources", "image", "produk", idProduk + ".png");
-                        java.nio.file.Files.copy(selectedImage[0].toPath(), dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                        produkBaru.setId(idProduk);
+                        showNotification("Produk berhasil ditambahkan!");
+                        System.out.println("DEBUG - Product added successfully with ID: " + produkBaru.getId());
                         return produkBaru;
                     } else {
-                        showNotification("Gagal menambah produk!");
+                        showNotification("Gagal menambah produk ke database!");
+                        System.err.println("DEBUG - Failed to add product to database");
+                        return null;
                     }
+                    
+                } catch (NumberFormatException e) {
+                    System.err.println("DEBUG - Number format exception: " + e.getMessage());
+                    showNotification("Format harga atau stok tidak valid!");
+                    return null;
                 } catch (Exception e) {
-                    showNotification("Input tidak valid atau gagal simpan gambar!");
+                    System.err.println("DEBUG - Exception in handleAddProduct: " + e.getMessage());
+                    e.printStackTrace();
+                    showNotification("Error: " + e.getMessage());
+                    return null;
                 }
             }
             return null;
         });
 
         dialog.showAndWait().ifPresent(produk -> {
+            System.out.println("DEBUG - Dialog completed successfully, refreshing UI");
             loadProdukToTable();
             loadProductCards();
             loadStatistics();
-            showNotification("Produk berhasil ditambahkan!");
         });
+        
+        System.out.println("DEBUG - handleAddProduct() finished");
     }
     
     private void handleEditSelectedProduct() {

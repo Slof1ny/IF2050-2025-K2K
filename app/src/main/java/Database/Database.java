@@ -20,15 +20,31 @@ public class Database {
     private static final String URL = "jdbc:sqlite:user.db";
     
     private Connection connection;
-    
-    // Constructor untuk inisialisasi koneksi database
+      // Constructor untuk inisialisasi koneksi database
     public Database() {
         try {
             Class.forName("org.sqlite.JDBC");
+            System.out.println("DEBUG - Database working directory: " + System.getProperty("user.dir"));
+            System.out.println("DEBUG - Database URL: " + URL);
+            
             connection = DriverManager.getConnection(URL);
+            System.out.println("DEBUG - Database connection established successfully");
+            
+            // Test if connection is working
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM produk")) {
+                if (rs.next()) {
+                    int count = rs.getInt(1);
+                    System.out.println("DEBUG - Current produk count in database: " + count);
+                }
+            } catch (SQLException e) {
+                System.err.println("DEBUG - Error testing database connection: " + e.getMessage());
+            }
+            
             createTableIfNotExists();
         } catch (ClassNotFoundException | SQLException e) {
             System.err.println("Error initializing database: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -1448,17 +1464,25 @@ public class Database {
     }
     
     // =================== PRODUK CRUD METHODS ===================
-    
-    // Method untuk menambah produk baru
+      // Method untuk menambah produk baru
     public boolean addProduk(Produk produk) {
         String insertSQL = "INSERT INTO produk (nama, harga, stok) VALUES (?, ?, ?)";
+        
+        System.out.println("DEBUG Database.addProduk - Input:");
+        System.out.println("- Nama: '" + produk.getNama() + "'");
+        System.out.println("- Harga: " + produk.getHarga());
+        System.out.println("- Stok: " + produk.getStok());
         
         try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
             stmt.setString(1, produk.getNama());
             stmt.setDouble(2, produk.getHarga());
             stmt.setInt(3, produk.getStok());
             
+            System.out.println("DEBUG - Executing SQL: " + insertSQL);
+            System.out.println("DEBUG - Parameters: ['" + produk.getNama() + "', " + produk.getHarga() + ", " + produk.getStok() + "]");
+            
             int rowsAffected = stmt.executeUpdate();
+            System.out.println("DEBUG - Rows affected: " + rowsAffected);
             
             if (rowsAffected > 0) {
                 // Get the last inserted ID
@@ -1466,13 +1490,19 @@ public class Database {
                 try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
                      ResultSet rs = lastIdStmt.executeQuery()) {
                     if (rs.next()) {
-                        produk.setId(rs.getInt(1));
+                        int insertedId = rs.getInt(1);
+                        System.out.println("DEBUG - Inserted ID: " + insertedId);
+                        produk.setId(insertedId);
                     }
                 }
+                System.out.println("DEBUG - Product successfully added to database");
                 return true;
+            } else {
+                System.err.println("DEBUG - No rows were affected by insert");
             }
         } catch (SQLException e) {
             System.err.println("Error adding produk: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
