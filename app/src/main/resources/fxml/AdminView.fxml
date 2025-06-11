@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controller.AdminController" prefHeight="600.0" prefWidth="1000.0" stylesheets="/css/dashboard-style.css">
+    <top>
+        <HBox alignment="CENTER_LEFT" styleClass="header-bar">
+            <children>
+                <Label text="Admin Dashboard" styleClass="logo-text" />
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <TabPane>
+            <tabs>
+                <Tab text="Monitor Stok">
+                    <content>
+                        <VBox spacing="10.0" alignment="TOP_CENTER" styleClass="admin-section">
+                            <Label text="Daftar Stok Produk" styleClass="section-title" />
+                            <TableView fx:id="stokTable" prefWidth="900" prefHeight="300">
+                                <columns>
+                                    <TableColumn fx:id="namaCol" text="Nama Produk" prefWidth="300" />
+                                    <TableColumn fx:id="hargaCol" text="Harga" prefWidth="200" />
+                                    <TableColumn fx:id="stokCol" text="Stok" prefWidth="150" />
+                                </columns>
+                            </TableView>
+                            <HBox spacing="10.0">
+                                <Button text="Tambah Produk" fx:id="addProductButton" />
+                                <Button text="Edit Produk" fx:id="editProductButton" />
+                                <Button text="Hapus Produk" fx:id="deleteProductButton" />
+                            </HBox>
+                        </VBox>
+                    </content>
+                </Tab>
+                <Tab text="Tambah Akun Dokter">
+                    <content>
+                        <VBox spacing="10.0" alignment="TOP_CENTER" styleClass="admin-section">
+                            <Label text="Form Tambah Dokter" styleClass="section-title" />
+                            <TextField fx:id="doctorNameField" promptText="Nama Dokter" />
+                            <TextField fx:id="doctorSpesialisField" promptText="Spesialisasi" />
+                            <PasswordField fx:id="doctorPasswordField" promptText="Password" />
+                            <Button text="Tambah Dokter" fx:id="addDoctorButton" />
+                            <Label fx:id="notificationLabel" visible="false" managed="false" styleClass="notification-label" />
+                        </VBox>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
+    </center>
+</BorderPane>

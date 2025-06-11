@@ -154,14 +154,19 @@ public class LoginController {
         // Set info login ke DashboardController
         Controller.DashboardController.setLoginInfo(role, name);
 
-        // Jika berhasil, ke dashboard
+        // Jika berhasil, ke dashboard sesuai role
         try {
             Stage stage = (Stage) signInButton.getScene().getWindow();
-            Parent dashboardRoot = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
-            Scene dashboardScene = new Scene(dashboardRoot, 1000, 600);
-            stage.setScene(dashboardScene);
-            stage.setTitle("TemuOptic Dashboard");
-            stage.centerOnScreen(); // Posisikan jendela di tengah layar
+            Parent root;
+            if (role.equalsIgnoreCase("Admin")) {
+                root = FXMLLoader.load(getClass().getResource("/fxml/AdminView.fxml"));
+            } else {
+                root = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
+            }
+            Scene scene = new Scene(root, 1000, 600);
+            stage.setScene(scene);
+            stage.setTitle(role.equalsIgnoreCase("Admin") ? "Admin Dashboard" : "TemuOptic Dashboard");
+            stage.centerOnScreen();
         } catch (IOException e) {
             e.printStackTrace();
             showAlert("Error", "Gagal memuat halaman dashboard.");
