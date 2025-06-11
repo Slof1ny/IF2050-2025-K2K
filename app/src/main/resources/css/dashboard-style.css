@@ -40,6 +40,12 @@
     -fx-text-fill: #3f51b5;
 }
 
+.nav-button-active {
+    -fx-text-fill: #3f51b5 !important;
+    -fx-font-weight: bold !important;
+    -fx-underline: true;
+}
+
 .user-button {
     -fx-background-color: #e8eaf6;
     -fx-text-fill: #3f51b5;
@@ -162,4 +168,108 @@
 .footer-bottom-text {
     -fx-text-fill: #adb5bd;
     -fx-font-size: 12px;
+}
+
+.tab-content {
+    -fx-background-color: #f8f9fa;
+    -fx-padding: 20;
+}
+
+/* Toggle button styling */
+.toggle-button {
+    -fx-background-color: #e9ecef;
+    -fx-text-fill: #6c757d;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 10 20;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1px;
+    -fx-cursor: hand;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+}
+
+.toggle-button-left {
+    -fx-background-radius: 6 0 0 6;
+    -fx-border-radius: 6 0 0 6;
+}
+
+.toggle-button-right {
+    -fx-background-radius: 0 6 6 0;
+    -fx-border-radius: 0 6 6 0;
+    -fx-border-width: 1 1 1 0;
+}
+
+.toggle-button:hover {
+    -fx-background-color: #dee2e6;
+    -fx-text-fill: #495057;
+}
+
+.toggle-active {
+    -fx-background-color: #3f51b5 !important;
+    -fx-text-fill: white !important;
+    -fx-font-weight: bold;
+}
+
+.toggle-active:hover {
+    -fx-background-color: #303f9f !important;
+    -fx-text-fill: white !important;
+}
+
+/* Feature card styling for the restored home content */
+.feature-card {
+    -fx-background-color: white;
+    -fx-padding: 20;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(140, 152, 164, 0.15), 15, 0, 0, 4);
+    -fx-border-color: #eef2f6;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+    -fx-alignment: center;
+    -fx-pref-width: 200;
+    -fx-pref-height: 120;
+}
+
+/* Main tab button styling */
+.main-tab-button {
+    -fx-background-color: #e9ecef;
+    -fx-text-fill: #6c757d;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 15 20;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1px;
+    -fx-cursor: hand;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+}
+
+.main-tab-left {
+    -fx-background-radius: 8 0 0 8;
+    -fx-border-radius: 8 0 0 8;
+}
+
+.main-tab-middle {
+    -fx-border-width: 1 0 1 0;
+}
+
+.main-tab-right {
+    -fx-background-radius: 0 8 8 0;
+    -fx-border-radius: 0 8 8 0;
+}
+
+.main-tab-button:hover {
+    -fx-background-color: #dee2e6;
+    -fx-text-fill: #495057;
+}
+
+.main-tab-active {
+    -fx-background-color: #3f51b5 !important;
+    -fx-text-fill: white !important;
+    -fx-font-weight: bold;
+}
+
+.main-tab-active:hover {
+    -fx-background-color: #303f9f !important;
+    -fx-text-fill: white !important;
 }

@@ -1,25 +1,905 @@
 package Controller;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
+import javafx.fxml.Initializable;
+import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.layout.*;
+import javafx.geometry.Pos;
+import javafx.geometry.Insets;
+import java.net.URL;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.WeekFields;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
-public class DashboardController {
+public class DashboardController implements Initializable {
     public static String loggedRole = "";
     public static String loggedName = "";
 
-    @FXML
-    private Button userButton;
+    @FXML private Button userButton;
+    @FXML private Button homeTab;
+    @FXML private Button productsTab;
+    @FXML private Button appointmentsTab;
+    @FXML private Button dashboardTab;
+    
+    // Tab content containers
+    @FXML private ScrollPane homeTabContent;
+    @FXML private VBox productsTabContent;
+    @FXML private VBox appointmentsTabContent;
+    @FXML private VBox dashboardTabContent;
+    @FXML private VBox profileTabContent;
+    @FXML private VBox cartTabContent;
+
+    private LocalDate currentWeekStart;
+    private String currentActiveTab = "home";
+
+    // Add enum for availability status (customer view)
+    private enum AvailabilityStatus {
+        AVAILABLE, OCCUPIED, UNAVAILABLE
+    }
 
     public static void setLoginInfo(String role, String name) {
         loggedRole = role;
         loggedName = name;
     }
 
-    @FXML
-    public void initialize() {
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
         // Set nama dan role pada button user jika sudah login
         if (userButton != null && !loggedRole.isEmpty() && !loggedName.isEmpty()) {
             userButton.setText(loggedRole + ": " + loggedName);
         }
+        
+        // Initialize current week start
+        currentWeekStart = LocalDate.now().with(WeekFields.of(Locale.getDefault()).dayOfWeek(), 1);
+
+        // Set active tab styling
+        setActiveTab(homeTab);
+        showHomeTab();
+    }
+
+    // Navigation handlers
+    @FXML
+    private void handleHome() {
+        setActiveTab(homeTab);
+        showHomeTab();
+    }
+
+    @FXML
+    private void handleProducts() {
+        setActiveTab(productsTab);
+        showProductsTab();
+    }
+
+    @FXML
+    private void handleAppointments() {
+        setActiveTab(appointmentsTab);
+        showAppointmentsTab();
+    }
+
+    @FXML
+    private void handleDashboard() {
+        setActiveTab(dashboardTab);
+        showDashboardTab();
+    }
+
+    @FXML
+    private void handleProfile() {
+        showProfileTab();
+    }
+
+    @FXML
+    private void handleCart() {
+        showCartTab();
+    }
+
+    @FXML
+    private void handleAppointment() {
+        showAppointmentCalendarDialog();
+    }
+
+    @FXML
+    private void handlePrescription() {
+        showAlert("Prescription", "Prescription management functionality will be implemented here.");
+    }
+
+    @FXML
+    private void handleHistory() {
+        showAlert("Medical History", "Medical history viewing functionality will be implemented here.");
+    }
+
+    @FXML
+    private void handleLogout() {
+        try {
+            // Load the login screen
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/LoginView.fxml"));
+            javafx.scene.Parent root = loader.load();
+            
+            javafx.stage.Stage stage = (javafx.stage.Stage) userButton.getScene().getWindow();
+            javafx.scene.Scene scene = new javafx.scene.Scene(root, 950, 600);
+            stage.setScene(scene);
+            stage.setTitle("Optik XYZ - Login");
+            stage.centerOnScreen();
+            
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+            showAlert("Error", "Failed to load login screen: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleNotification() {
+        showAlert("Notifications", "Notification center functionality will be implemented here.");
+    }
+
+    @FXML
+    private void handleSettings() {
+        showAlert("Settings", "Settings functionality will be implemented here.");
+    }
+
+    @FXML
+    private void handleHelp() {
+        showAlert("Help", "Help and support functionality will be implemented here.");
+    }
+
+    @FXML
+    private void handleEmergency() {
+        showAlert("Emergency", "Emergency contact functionality will be implemented here.\n\nFor immediate medical assistance, please call:\n\n🚨 Emergency: 119\n🏥 Hospital: (021) 123-4567");
+    }
+
+    @FXML
+    private void handleQuickBook() {
+        // Same as appointment but with quick booking flow
+        handleAppointment();
+    }
+
+    @FXML
+    private void handleViewReports() {
+        showAlert("Medical Reports", "Medical reports viewing functionality will be implemented here.");
+    }
+
+    @FXML
+    private void handlePayment() {
+        showAlert("Payment", "Payment management functionality will be implemented here.");
+    }
+
+    private void showAppointmentCalendarDialog() {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Book Appointment");
+        dialog.setHeaderText("Select available time slot for your appointment");
+
+        // Create the calendar content
+        VBox content = new VBox(15);
+        content.setPrefSize(800, 600);
+        content.setPadding(new Insets(20));
+
+        // Week navigation
+        HBox weekNavigation = new HBox(15);
+        weekNavigation.setAlignment(Pos.CENTER);
+
+        Button prevWeekBtn = new Button("◀ Previous Week");
+        prevWeekBtn.getStyleClass().add("view-button");
+
+        Label weekLabel = new Label("Week of " + currentWeekStart.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
+        weekLabel.getStyleClass().add("section-header");
+
+        Button nextWeekBtn = new Button("Next Week ▶");
+        nextWeekBtn.getStyleClass().add("view-button");
+
+        weekNavigation.getChildren().addAll(prevWeekBtn, weekLabel, nextWeekBtn);
+
+        // Calendar grid
+        GridPane calendar = new GridPane();
+        calendar.setHgap(5);
+        calendar.setVgap(5);
+        calendar.getStyleClass().add("appointments-section");
+
+        // Setup column constraints
+        for (int i = 0; i < 8; i++) {
+            ColumnConstraints col = new ColumnConstraints();
+            col.setHgrow(Priority.SOMETIMES);
+            col.setMinWidth(100);
+            calendar.getColumnConstraints().add(col);
+        }
+
+        // Setup row constraints
+        for (int i = 0; i < 11; i++) {
+            RowConstraints row = new RowConstraints();
+            row.setVgrow(Priority.SOMETIMES);
+            row.setMinHeight(40);
+            calendar.getRowConstraints().add(row);
+        }
+
+        // Create calendar content
+        loadCustomerCalendar(calendar, weekLabel);
+
+        // Week navigation handlers
+        prevWeekBtn.setOnAction(e -> {
+            currentWeekStart = currentWeekStart.minusWeeks(1);
+            weekLabel.setText("Week of " + currentWeekStart.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
+            loadCustomerCalendar(calendar, weekLabel);
+        });
+
+        nextWeekBtn.setOnAction(e -> {
+            currentWeekStart = currentWeekStart.plusWeeks(1);
+            weekLabel.setText("Week of " + currentWeekStart.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
+            loadCustomerCalendar(calendar, weekLabel);
+        });
+
+        // Legend
+        HBox legend = createAppointmentLegend();
+
+        content.getChildren().addAll(weekNavigation, calendar, legend);
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CLOSE);
+
+        // Style the dialog
+        dialog.getDialogPane().getStylesheets().add("/css/doctor-dashboard.css");
+
+        dialog.showAndWait();
+    }
+
+    private void loadCustomerCalendar(GridPane calendar, Label weekLabel) {
+        calendar.getChildren().clear();
+
+        // Create header row
+        Label timeHeader = new Label("Time");
+        timeHeader.getStyleClass().add("calendar-header");
+        calendar.add(timeHeader, 0, 0);
+
+        String[] days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+        for (int i = 0; i < days.length; i++) {
+            VBox dayHeaderContainer = new VBox(5);
+            dayHeaderContainer.setAlignment(Pos.CENTER);
+
+            Label dayHeader = new Label(days[i]);
+            dayHeader.getStyleClass().add("calendar-header");
+
+            LocalDate dayDate = currentWeekStart.plusDays(i);
+            Label dateLabel = new Label(dayDate.getDayOfMonth() + "");
+            dateLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #546e7a;");
+
+            dayHeaderContainer.getChildren().addAll(dayHeader, dateLabel);
+            calendar.add(dayHeaderContainer, i + 1, 0);
+        }
+
+        // Create time slots
+        String[] timeSlots = {"09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"};
+
+        for (int row = 1; row <= timeSlots.length; row++) {
+            Label timeLabel = new Label(timeSlots[row - 1]);
+            timeLabel.getStyleClass().add("calendar-time");
+            calendar.add(timeLabel, 0, row);
+
+            for (int col = 1; col <= 7; col++) {
+                LocalDate dayDate = currentWeekStart.plusDays(col - 1);
+                VBox timeSlot = createCustomerTimeSlot(dayDate, timeSlots[row - 1]);
+                calendar.add(timeSlot, col, row);
+            }
+        }
+    }
+
+    private VBox createCustomerTimeSlot(LocalDate date, String time) {
+        VBox slot = new VBox(2);
+        slot.getStyleClass().add("calendar-slot");
+        slot.setAlignment(Pos.CENTER);
+        slot.setPrefHeight(40);
+
+        // Get availability status (simulate doctor's availability)
+        AvailabilityStatus status = getSimulatedAvailability(date, time);
+
+        // Set styling based on availability
+        updateCustomerSlotAppearance(slot, status);
+
+        // Add status label
+        Label statusLabel = new Label(getCustomerStatusText(status));
+        statusLabel.getStyleClass().addAll("calendar-status-label", getCustomerStatusStyleClass(status));
+
+        // Add appointment info if occupied
+        if (status == AvailabilityStatus.OCCUPIED) {
+            Label occupiedLabel = new Label("Booked");
+            occupiedLabel.getStyleClass().add("calendar-appointment");
+            slot.getChildren().add(occupiedLabel);
+        }
+
+        slot.getChildren().add(statusLabel);
+
+        // Add click handler for available slots
+        if (status == AvailabilityStatus.AVAILABLE) {
+            slot.setOnMouseClicked(event -> handleAppointmentBooking(date, time));
+            slot.setStyle(slot.getStyle() + "-fx-cursor: hand;");
+        }
+
+        return slot;
+    }
+
+    private AvailabilityStatus getSimulatedAvailability(LocalDate date, String time) {
+        // Simulate doctor availability (same logic as doctor dashboard)
+        if (date.getDayOfWeek().getValue() == 7) { // Sunday
+            return AvailabilityStatus.UNAVAILABLE;
+        }
+
+        if (time.equals("12:00") || time.equals("13:00")) { // Lunch break
+            return AvailabilityStatus.UNAVAILABLE;
+        }
+
+        // Some sample occupied slots
+        if ((date.getDayOfWeek().getValue() == 1 && time.equals("10:00")) ||
+            (date.getDayOfWeek().getValue() == 3 && time.equals("14:00")) ||
+            (date.getDayOfWeek().getValue() == 5 && time.equals("16:00"))) {
+            return AvailabilityStatus.OCCUPIED;
+        }
+
+        return AvailabilityStatus.AVAILABLE;
+    }
+
+    private void handleAppointmentBooking(LocalDate date, String time) {
+        Alert bookingDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        bookingDialog.setTitle("Book Appointment");
+        bookingDialog.setHeaderText("Confirm Appointment Booking");
+
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+
+        Label dateTimeLabel = new Label("Date & Time: " +
+            date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + " at " + time);
+        dateTimeLabel.getStyleClass().add("patient-name");
+
+        Label doctorLabel = new Label("Doctor: DR. Available Doctor");
+        doctorLabel.getStyleClass().add("field-label");
+
+        Label typeLabel = new Label("Appointment Type:");
+        typeLabel.getStyleClass().add("field-label");
+
+        ComboBox<String> typeCombo = new ComboBox<>();
+        typeCombo.getItems().addAll("Regular Checkup", "Follow-up Visit", "Eye Examination", "Prescription Update");
+        typeCombo.setValue("Regular Checkup");
+
+        Label notesLabel = new Label("Additional Notes:");
+        notesLabel.getStyleClass().add("field-label");
+
+        TextArea notesArea = new TextArea();
+        notesArea.setPrefRowCount(3);
+        notesArea.setPromptText("Enter any additional information or symptoms...");
+
+        content.getChildren().addAll(dateTimeLabel, doctorLabel, typeLabel, typeCombo, notesLabel, notesArea);
+
+        bookingDialog.getDialogPane().setContent(content);
+
+        bookingDialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                // Here you would save the appointment to database
+                showAlert("Success", "Appointment booked successfully!\n\n" +
+                    "Date: " + date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "\n" +
+                    "Time: " + time + "\n" +
+                    "Type: " + typeCombo.getValue());
+            }
+        });
+    }
+
+    private void updateCustomerSlotAppearance(VBox slot, AvailabilityStatus status) {
+        switch (status) {
+            case AVAILABLE:
+                slot.getStyleClass().add("calendar-slot-available");
+                break;
+            case OCCUPIED:
+                slot.getStyleClass().add("calendar-slot-occupied");
+                break;
+            case UNAVAILABLE:
+                slot.getStyleClass().add("calendar-slot-unavailable");
+                break;
+        }
+    }
+
+    private String getCustomerStatusText(AvailabilityStatus status) {
+        switch (status) {
+            case AVAILABLE: return "Available";
+            case OCCUPIED: return "Booked";
+            case UNAVAILABLE: return "Unavailable";
+            default: return "";
+        }
+    }
+
+    private String getCustomerStatusStyleClass(AvailabilityStatus status) {
+        switch (status) {
+            case AVAILABLE: return "status-available";
+            case OCCUPIED: return "status-occupied";
+            case UNAVAILABLE: return "status-unavailable";
+            default: return "";
+        }
+    }
+
+    private HBox createAppointmentLegend() {
+        HBox legend = new HBox(20);
+        legend.setAlignment(Pos.CENTER);
+        legend.getStyleClass().add("calendar-legend");
+
+        // Available legend item
+        HBox availableItem = new HBox(8);
+        availableItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label availableColor = new Label();
+        availableColor.getStyleClass().addAll("legend-color", "legend-available");
+        Label availableText = new Label("Available - Click to book");
+        availableText.getStyleClass().add("legend-text");
+        availableItem.getChildren().addAll(availableColor, availableText);
+
+        // Booked legend item
+        HBox bookedItem = new HBox(8);
+        bookedItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label bookedColor = new Label();
+        bookedColor.getStyleClass().addAll("legend-color", "legend-occupied");
+        Label bookedText = new Label("Already Booked");
+        bookedText.getStyleClass().add("legend-text");
+        bookedItem.getChildren().addAll(bookedColor, bookedText);
+
+        // Unavailable legend item
+        HBox unavailableItem = new HBox(8);
+        unavailableItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label unavailableColor = new Label();
+        unavailableColor.getStyleClass().addAll("legend-color", "legend-unavailable");
+        Label unavailableText = new Label("Unavailable");
+        unavailableText.getStyleClass().add("legend-text");
+        unavailableItem.getChildren().addAll(unavailableColor, unavailableText);
+
+        legend.getChildren().addAll(availableItem, bookedItem, unavailableItem);
+        return legend;
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    // Tab switching methods
+    private void setActiveTab(Button activeTab) {
+        // Reset all tabs to default style
+        homeTab.getStyleClass().remove("nav-button-active");
+        productsTab.getStyleClass().remove("nav-button-active");
+        appointmentsTab.getStyleClass().remove("nav-button-active");
+        dashboardTab.getStyleClass().remove("nav-button-active");
+        
+        // Add active class to selected tab
+        activeTab.getStyleClass().add("nav-button-active");
+    }
+
+    private void showHomeTab() {
+        hideAllTabs();
+        homeTabContent.setVisible(true);
+        homeTabContent.setManaged(true);
+        currentActiveTab = "home";
+    }
+
+    private void showProductsTab() {
+        hideAllTabs();
+        productsTabContent.setVisible(true);
+        productsTabContent.setManaged(true);
+        loadProductsContent();
+        currentActiveTab = "products";
+    }
+
+    private void showAppointmentsTab() {
+        hideAllTabs();
+        appointmentsTabContent.setVisible(true);
+        appointmentsTabContent.setManaged(true);
+        loadAppointmentsContent();
+        currentActiveTab = "appointments";
+    }
+
+    private void showDashboardTab() {
+        hideAllTabs();
+        dashboardTabContent.setVisible(true);
+        dashboardTabContent.setManaged(true);
+        loadDashboardContent();
+        currentActiveTab = "dashboard";
+    }
+
+    private void showProfileTab() {
+        hideAllTabs();
+        profileTabContent.setVisible(true);
+        profileTabContent.setManaged(true);
+        loadProfileContent();
+        currentActiveTab = "profile";
+    }
+
+    private void showCartTab() {
+        hideAllTabs();
+        cartTabContent.setVisible(true);
+        cartTabContent.setManaged(true);
+        loadCartContent();
+        currentActiveTab = "cart";
+    }
+
+    private void hideAllTabs() {
+        homeTabContent.setVisible(false);
+        homeTabContent.setManaged(false);
+        productsTabContent.setVisible(false);
+        productsTabContent.setManaged(false);
+        appointmentsTabContent.setVisible(false);
+        appointmentsTabContent.setManaged(false);
+        dashboardTabContent.setVisible(false);
+        dashboardTabContent.setManaged(false);
+        profileTabContent.setVisible(false);
+        profileTabContent.setManaged(false);
+        cartTabContent.setVisible(false);
+        cartTabContent.setManaged(false);
+    }
+
+    // Content loading methods
+    private void loadProductsContent() {
+        productsTabContent.getChildren().clear();
+        
+        Label header = new Label("Our Products");
+        header.getStyleClass().add("section-title");
+        
+        // Product categories
+        HBox categories = new HBox(20);
+        categories.setAlignment(Pos.CENTER);
+        
+        Button framesBtn = new Button("Frames");
+        framesBtn.getStyleClass().add("hero-button-primary");
+        framesBtn.setOnAction(e -> showAlert("Frames", "Browse our collection of stylish frames"));
+        
+        Button lensesBtn = new Button("Lenses");
+        lensesBtn.getStyleClass().add("hero-button-primary");
+        lensesBtn.setOnAction(e -> showAlert("Lenses", "Explore our lens options"));
+        
+        Button sunglassesBtn = new Button("Sunglasses");
+        sunglassesBtn.getStyleClass().add("hero-button-primary");
+        sunglassesBtn.setOnAction(e -> showAlert("Sunglasses", "Check out our sunglasses collection"));
+        
+        Button accessoriesBtn = new Button("Accessories");
+        accessoriesBtn.getStyleClass().add("hero-button-primary");
+        accessoriesBtn.setOnAction(e -> showAlert("Accessories", "Browse eye care accessories"));
+        
+        categories.getChildren().addAll(framesBtn, lensesBtn, sunglassesBtn, accessoriesBtn);
+        
+        // Sample products grid
+        GridPane productsGrid = new GridPane();
+        productsGrid.setHgap(20);
+        productsGrid.setVgap(20);
+        productsGrid.setAlignment(Pos.CENTER);
+        
+        for (int i = 0; i < 6; i++) {
+            VBox productCard = createProductCard("Product " + (i + 1), "$" + (99 + i * 10));
+            productsGrid.add(productCard, i % 3, i / 3);
+        }
+        
+        productsTabContent.getChildren().addAll(header, categories, productsGrid);
+    }
+
+    private void loadAppointmentsContent() {
+        appointmentsTabContent.getChildren().clear();
+        
+        // Create scrollable content
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.getStyleClass().add("appointments-scroll");
+        
+        VBox scrollableContent = new VBox(20);
+        scrollableContent.setPadding(new Insets(20));
+        
+        Label header = new Label("Appointment Management");
+        header.getStyleClass().add("section-title");
+        
+        // Main navigation buttons side by side
+        HBox mainButtons = new HBox(0); // No spacing for seamless buttons
+        mainButtons.setAlignment(Pos.CENTER);
+        mainButtons.setPadding(new Insets(20, 0, 20, 0));
+        
+        Button bookBtn = new Button("Book New Appointment");
+        bookBtn.getStyleClass().addAll("main-tab-button", "main-tab-left", "main-tab-active");
+        bookBtn.setPrefWidth(200);
+        
+        Button upcomingBtn = new Button("Upcoming");
+        upcomingBtn.getStyleClass().addAll("main-tab-button", "main-tab-middle");
+        upcomingBtn.setPrefWidth(150);
+        
+        Button historyBtn = new Button("History");
+        historyBtn.getStyleClass().addAll("main-tab-button", "main-tab-right");
+        historyBtn.setPrefWidth(150);
+        
+        mainButtons.getChildren().addAll(bookBtn, upcomingBtn, historyBtn);
+        
+        // Container for content that changes based on selected button
+        VBox contentContainer = new VBox(15);
+        
+        // Load book appointment content by default
+        loadBookAppointmentContent(contentContainer);
+        
+        // Button event handlers
+        bookBtn.setOnAction(e -> {
+            setActiveMainTab(bookBtn, upcomingBtn, historyBtn);
+            loadBookAppointmentContent(contentContainer);
+        });
+        
+        upcomingBtn.setOnAction(e -> {
+            setActiveMainTab(upcomingBtn, bookBtn, historyBtn);
+            loadUpcomingAppointments(contentContainer);
+        });
+        
+        historyBtn.setOnAction(e -> {
+            setActiveMainTab(historyBtn, bookBtn, upcomingBtn);
+            loadHistoryAppointments(contentContainer);
+        });
+        
+        scrollableContent.getChildren().addAll(header, mainButtons, contentContainer);
+        scrollPane.setContent(scrollableContent);
+        
+        appointmentsTabContent.getChildren().add(scrollPane);
+    }
+    
+    private void setActiveMainTab(Button activeBtn, Button... otherBtns) {
+        // Remove active class from all buttons
+        for (Button btn : otherBtns) {
+            btn.getStyleClass().removeAll("main-tab-active");
+        }
+        activeBtn.getStyleClass().removeAll("main-tab-active");
+        
+        // Add active class to selected button
+        activeBtn.getStyleClass().add("main-tab-active");
+    }
+    
+    private void loadBookAppointmentContent(VBox container) {
+        container.getChildren().clear();
+        
+        Label bookHeader = new Label("Book New Appointment");
+        bookHeader.getStyleClass().add("card-title");
+        
+        VBox bookingSection = new VBox(15);
+        bookingSection.setAlignment(Pos.CENTER);
+        
+        Label instructionLabel = new Label("Select your preferred appointment type and schedule:");
+        instructionLabel.getStyleClass().add("card-description");
+        instructionLabel.setAlignment(Pos.CENTER);
+        
+        // Quick booking options
+        GridPane quickOptions = new GridPane();
+        quickOptions.setHgap(15);
+        quickOptions.setVgap(15);
+        quickOptions.setAlignment(Pos.CENTER);
+        
+        VBox eyeExamCard = createQuickBookCard("Eye Examination", "Comprehensive eye check");
+        VBox checkupCard = createQuickBookCard("Regular Checkup", "Routine health assessment");
+        VBox followupCard = createQuickBookCard("Follow-up Visit", "Post-treatment consultation");
+        VBox lensCard = createQuickBookCard("Contact Lens Fitting", "Lens measurement & fitting");
+        
+        quickOptions.add(eyeExamCard, 0, 0);
+        quickOptions.add(checkupCard, 1, 0);
+        quickOptions.add(followupCard, 0, 1);
+        quickOptions.add(lensCard, 1, 1);
+        
+        // Main booking button
+        Button mainBookBtn = new Button("Open Calendar & Book Appointment");
+        mainBookBtn.getStyleClass().add("hero-button-primary");
+        mainBookBtn.setPrefWidth(300);
+        mainBookBtn.setOnAction(e -> handleAppointment());
+        
+        bookingSection.getChildren().addAll(instructionLabel, quickOptions, mainBookBtn);
+        container.getChildren().addAll(bookHeader, bookingSection);
+    }
+    
+    private VBox createQuickBookCard(String title, String description) {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("service-card");
+        card.setAlignment(Pos.CENTER);
+        card.setPrefWidth(180);
+        card.setPrefHeight(120);
+        card.setOnMouseClicked(e -> {
+            showAlert("Quick Book", "Opening calendar for: " + title);
+            handleAppointment();
+        });
+        card.setStyle(card.getStyle() + "-fx-cursor: hand;");
+        
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("card-title");
+        titleLabel.setAlignment(Pos.CENTER);
+        
+        Label descLabel = new Label(description);
+        descLabel.getStyleClass().add("card-description");
+        descLabel.setAlignment(Pos.CENTER);
+        
+        card.getChildren().addAll(titleLabel, descLabel);
+        return card;
+    }
+
+    private void loadUpcomingAppointments(VBox container) {
+        container.getChildren().clear();
+        
+        Label upcomingHeader = new Label("Upcoming Appointments");
+        upcomingHeader.getStyleClass().add("card-title");
+        
+        VBox appointmentsList = new VBox(10);
+        appointmentsList.getChildren().addAll(
+            createAppointmentCard("Eye Examination", "January 25, 2024", "10:00 AM", "Dr. Smith"),
+            createAppointmentCard("Follow-up Visit", "February 5, 2024", "2:00 PM", "Dr. Johnson"),
+            createAppointmentCard("Contact Lens Fitting", "February 15, 2024", "11:30 AM", "Dr. Brown"),
+            createAppointmentCard("Regular Checkup", "February 20, 2024", "9:00 AM", "Dr. Wilson"),
+            createAppointmentCard("Eye Examination", "March 1, 2024", "3:00 PM", "Dr. Davis"),
+            createAppointmentCard("Contact Lens Fitting", "March 10, 2024", "10:30 AM", "Dr. Miller")
+        );
+        
+        container.getChildren().addAll(upcomingHeader, appointmentsList);
+    }
+    
+    private void loadHistoryAppointments(VBox container) {
+        container.getChildren().clear();
+        
+        Label historyHeader = new Label("Appointment History");
+        historyHeader.getStyleClass().add("card-title");
+        
+        VBox historyList = new VBox(10);
+        historyList.getChildren().addAll(
+            createAppointmentCard("Eye Examination", "December 15, 2023", "2:00 PM", "Dr. Smith"),
+            createAppointmentCard("Regular Checkup", "November 20, 2023", "11:00 AM", "Dr. Johnson"),
+            createAppointmentCard("Follow-up Visit", "October 10, 2023", "4:00 PM", "Dr. Brown"),
+            createAppointmentCard("Contact Lens Fitting", "September 5, 2023", "1:00 PM", "Dr. Wilson"),
+            createAppointmentCard("Eye Examination", "August 15, 2023", "3:30 PM", "Dr. Davis"),
+            createAppointmentCard("Regular Checkup", "July 20, 2023", "9:30 AM", "Dr. Miller"),
+            createAppointmentCard("Follow-up Visit", "June 10, 2023", "2:30 PM", "Dr. Smith"),
+            createAppointmentCard("Contact Lens Fitting", "May 5, 2023", "11:30 AM", "Dr. Johnson")
+        );
+        
+        container.getChildren().addAll(historyHeader, historyList);
+    }
+
+    private void loadDashboardContent() {
+        dashboardTabContent.getChildren().clear();
+        
+        Label header = new Label("Patient Dashboard");
+        header.getStyleClass().add("section-title");
+        
+        // Quick actions grid
+        GridPane quickActions = new GridPane();
+        quickActions.setHgap(20);
+        quickActions.setVgap(20);
+        quickActions.setAlignment(Pos.CENTER);
+        
+        VBox appointmentCard = createDashboardCard("Appointments", "Manage your appointments", e -> handleAppointments());
+        VBox prescriptionCard = createDashboardCard("Prescriptions", "View your prescriptions", e -> handlePrescription());
+        VBox historyCard = createDashboardCard("Medical History", "Access your records", e -> handleHistory());
+        VBox settingsCard = createDashboardCard("Settings", "Update preferences", e -> handleSettings());
+        
+        quickActions.add(appointmentCard, 0, 0);
+        quickActions.add(prescriptionCard, 1, 0);
+        quickActions.add(historyCard, 0, 1);
+        quickActions.add(settingsCard, 1, 1);
+        
+        dashboardTabContent.getChildren().addAll(header, quickActions);
+    }
+
+    private void loadProfileContent() {
+        profileTabContent.getChildren().clear();
+        
+        Label header = new Label("My Profile");
+        header.getStyleClass().add("section-title");
+        
+        VBox profileInfo = new VBox(15);
+        profileInfo.setAlignment(Pos.CENTER_LEFT);
+        
+        profileInfo.getChildren().addAll(
+            createProfileRow("Name", loggedName.isEmpty() ? "Customer User" : loggedName),
+            createProfileRow("Role", loggedRole.isEmpty() ? "Customer" : loggedRole),
+            createProfileRow("Email", "customer@example.com"),
+            createProfileRow("Phone", "+62 123 456 7890"),
+            createProfileRow("Address", "123 Main Street, City"),
+            createProfileRow("Member Since", "January 2024")
+        );
+        
+        HBox profileActions = new HBox(15);
+        profileActions.setAlignment(Pos.CENTER);
+        
+        Button editBtn = new Button("Edit Profile");
+        editBtn.getStyleClass().add("hero-button-primary");
+        editBtn.setOnAction(e -> showAlert("Edit Profile", "Edit profile functionality"));
+        
+        Button logoutBtn = new Button("Logout");
+        logoutBtn.getStyleClass().add("hero-button-secondary");
+        logoutBtn.setOnAction(e -> handleLogout());
+        
+        profileActions.getChildren().addAll(editBtn, logoutBtn);
+        
+        profileTabContent.getChildren().addAll(header, profileInfo, profileActions);
+    }
+
+    private void loadCartContent() {
+        cartTabContent.getChildren().clear();
+        
+        Label header = new Label("Shopping Cart");
+        header.getStyleClass().add("section-title");
+        
+        Label emptyMessage = new Label("Your cart is currently empty");
+        emptyMessage.getStyleClass().add("section-subtitle");
+        
+        Button shopBtn = new Button("Start Shopping");
+        shopBtn.getStyleClass().add("hero-button-primary");
+        shopBtn.setOnAction(e -> handleProducts());
+        
+        cartTabContent.getChildren().addAll(header, emptyMessage, shopBtn);
+    }
+
+    // Helper methods for creating UI components
+    private VBox createProductCard(String name, String price) {
+        VBox card = new VBox(10);
+        card.getStyleClass().add("service-card");
+        card.setAlignment(Pos.CENTER);
+        card.setPrefWidth(200);
+        card.setPrefHeight(250);
+        
+        Label productName = new Label(name);
+        productName.getStyleClass().add("card-title");
+        
+        Label productPrice = new Label(price);
+        productPrice.getStyleClass().add("section-subtitle");
+        
+        Button addToCartBtn = new Button("Add to Cart");
+        addToCartBtn.getStyleClass().add("hero-button-primary");
+        addToCartBtn.setOnAction(e -> showAlert("Cart", name + " added to cart"));
+        
+        card.getChildren().addAll(productName, productPrice, addToCartBtn);
+        return card;
+    }
+
+    private VBox createAppointmentCard(String type, String date, String time, String doctor) {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("service-card");
+        
+        Label typeLabel = new Label(type);
+        typeLabel.getStyleClass().add("card-title");
+        
+        Label dateTimeLabel = new Label(date + " at " + time);
+        dateTimeLabel.getStyleClass().add("card-description");
+        
+        Label doctorLabel = new Label("with " + doctor);
+        doctorLabel.getStyleClass().add("card-description");
+        
+        card.getChildren().addAll(typeLabel, dateTimeLabel, doctorLabel);
+        return card;
+    }
+
+    private VBox createDashboardCard(String title, String description, javafx.event.EventHandler<javafx.event.ActionEvent> action) {
+        VBox card = new VBox(10);
+        card.getStyleClass().add("service-card");
+        card.setAlignment(Pos.CENTER);
+        card.setPrefWidth(200);
+        card.setPrefHeight(150);
+        
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("card-title");
+        
+        Label descLabel = new Label(description);
+        descLabel.getStyleClass().add("card-description");
+        
+        Button actionBtn = new Button("Open");
+        actionBtn.getStyleClass().add("hero-button-primary");
+        actionBtn.setOnAction(action);
+        
+        card.getChildren().addAll(titleLabel, descLabel, actionBtn);
+        return card;
+    }
+
+    private HBox createProfileRow(String label, String value) {
+        HBox row = new HBox(20);
+        row.setAlignment(Pos.CENTER_LEFT);
+        
+        Label labelText = new Label(label + ":");
+        labelText.getStyleClass().add("card-title");
+        labelText.setPrefWidth(120);
+        
+        Label valueText = new Label(value);
+        valueText.getStyleClass().add("card-description");
+        
+        row.getChildren().addAll(labelText, valueText);
+        return row;
     }
 }
