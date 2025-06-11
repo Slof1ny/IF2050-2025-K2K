@@ -68,7 +68,7 @@ public class DoctorDashboardController implements Initializable {
     @FXML private Button prescriptionsButton;
     @FXML private Button settingsButton;
     
-    private String doctorName;
+    private static String doctorName;
     private LocalDate currentWeekStart;
 
     // Add enum for availability status
@@ -78,6 +78,12 @@ public class DoctorDashboardController implements Initializable {
     
     // Add data structure to store availability
     private Map<String, AvailabilityStatus> doctorAvailability = new HashMap<>();
+    
+    // Add field to track booked appointments for real-time updates
+    private java.util.Set<String> bookedSlots = new java.util.HashSet<>();
+    
+    // Add data structure to store doctor's custom availability
+    private Map<String, AvailabilityStatus> customAvailability = new HashMap<>();
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -94,6 +100,13 @@ public class DoctorDashboardController implements Initializable {
         
         // Initialize appointment cards
         loadAppointmentCards();
+        
+        // Register this instance for patient dashboard notifications
+        DashboardController.setDoctorDashboardInstance(this);
+    }
+    
+    public static String getLoggedDoctorName() {
+        return doctorName;
     }
     
     public void setDoctorName(String doctorName) {
@@ -460,19 +473,17 @@ public class DoctorDashboardController implements Initializable {
             weeklyCalendar.add(dayHeaderContainer, i + 1, 0);
         }
         
-        // Create time slots with availability
+        // Create time slots with real-time availability checking
         String[] timeSlots = {"09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"};
-        
+
         for (int row = 1; row <= timeSlots.length; row++) {
-            // Time label
             Label timeLabel = new Label(timeSlots[row - 1]);
             timeLabel.getStyleClass().add("calendar-time");
             weeklyCalendar.add(timeLabel, 0, row);
-            
-            // Day slots with availability status
+
             for (int col = 1; col <= 7; col++) {
                 LocalDate dayDate = currentWeekStart.plusDays(col - 1);
-                VBox timeSlot = createClickableTimeSlot(row, col, dayDate, timeSlots[row - 1]);
+                VBox timeSlot = createTimeSlot(dayDate, timeSlots[row - 1]);
                 weeklyCalendar.add(timeSlot, col, row);
             }
         }
@@ -481,185 +492,389 @@ public class DoctorDashboardController implements Initializable {
         createCalendarLegend();
     }
 
-    private VBox createClickableTimeSlot(int timeSlotIndex, int dayOfWeek, LocalDate date, String time) {
+    private VBox createTimeSlot(LocalDate date, String time) {
         VBox slot = new VBox(2);
         slot.getStyleClass().add("calendar-slot");
-        slot.setAlignment(Pos.TOP_CENTER);
+        slot.setAlignment(Pos.CENTER);
         slot.setPrefHeight(40);
-        
-        // Create unique key for this time slot
-        String slotKey = date.toString() + "_" + time;
-        
-        // Get current availability status (default to available)
-        AvailabilityStatus status = doctorAvailability.getOrDefault(slotKey, getDefaultAvailability(date, time));
-        
-        // Set initial styling based on status
+
+        AvailabilityStatus status = getAvailability(date, time);
         updateSlotAppearance(slot, status);
-        
-        // Add status label
+
+        if (status == AvailabilityStatus.OCCUPIED) {
+            // Get patient info for this appointment
+            String patientInfo = getPatientInfoForSlot(date, time);
+            if (!patientInfo.isEmpty()) {
+                Label appointmentLabel = new Label(patientInfo);
+                appointmentLabel.getStyleClass().add("calendar-appointment");
+                appointmentLabel.setMaxWidth(80);
+                appointmentLabel.setWrapText(true);
+                slot.getChildren().add(appointmentLabel);
+            } else {
+                Label bookedLabel = new Label("Booked");
+                bookedLabel.getStyleClass().add("calendar-appointment");
+                slot.getChildren().add(bookedLabel);
+            }
+        }
+
         Label statusLabel = new Label(getStatusText(status));
         statusLabel.getStyleClass().addAll("calendar-status-label", getStatusStyleClass(status));
-        
-        // Add patient info if occupied
-        if (status == AvailabilityStatus.OCCUPIED) {
-            Label patientLabel = new Label("Patient Visit");
-            patientLabel.getStyleClass().add("calendar-appointment");
-            slot.getChildren().add(patientLabel);
-        }
-        
         slot.getChildren().add(statusLabel);
-        
-        // Add click handler
-        slot.setOnMouseClicked(event -> handleTimeSlotClick(slot, slotKey, date, time));
-        
+
+        // Add click handler for available and unavailable slots (not occupied ones)
+        if (status != AvailabilityStatus.OCCUPIED) {
+            slot.setOnMouseClicked(event -> handleSlotClick(date, time, slot));
+            slot.setStyle(slot.getStyle() + "-fx-cursor: hand;");
+            
+            // Add hover effect
+            slot.setOnMouseEntered(e -> slot.setStyle(slot.getStyle() + "-fx-opacity: 0.8;"));
+            slot.setOnMouseExited(e -> slot.setStyle(slot.getStyle().replace("-fx-opacity: 0.8;", "")));
+        }
+
         return slot;
     }
     
-    private AvailabilityStatus getDefaultAvailability(LocalDate date, String time) {
-        // Set default availability based on business rules
-        if (date.getDayOfWeek().getValue() == 7) { // Sunday
-            return AvailabilityStatus.UNAVAILABLE;
+    private void handleSlotClick(LocalDate date, String time, VBox slot) {
+        String slotKey = date.toString() + "_" + time;
+        
+        // Get current status
+        AvailabilityStatus currentStatus = getAvailability(date, time);
+        
+        // Don't allow editing if there's already an appointment
+        if (isSlotBookedForDoctor(date, time)) {
+            showAlert("Cannot Edit", "This time slot already has an appointment and cannot be modified.");
+            return;
         }
         
-        if (time.equals("12:00") || time.equals("13:00")) { // Lunch break
-            return AvailabilityStatus.UNAVAILABLE;
+        // Toggle between available and unavailable
+        AvailabilityStatus newStatus;
+        if (currentStatus == AvailabilityStatus.AVAILABLE) {
+            newStatus = AvailabilityStatus.UNAVAILABLE;
+        } else {
+            newStatus = AvailabilityStatus.AVAILABLE;
         }
         
-        // Add some sample occupied slots
-        if ((date.getDayOfWeek().getValue() == 1 && time.equals("10:00")) ||
-            (date.getDayOfWeek().getValue() == 3 && time.equals("14:00")) ||
-            (date.getDayOfWeek().getValue() == 5 && time.equals("16:00"))) {
+        // Show confirmation dialog
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmDialog.setTitle("Change Availability");
+        confirmDialog.setHeaderText("Update Time Slot Availability");
+        
+        String dateStr = date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy"));
+        String statusStr = newStatus == AvailabilityStatus.AVAILABLE ? "Available" : "Unavailable";
+        
+        confirmDialog.setContentText(String.format(
+            "Do you want to set %s at %s as %s?\n\n" +
+            "This will affect your schedule for patient bookings.",
+            dateStr, time, statusStr
+        ));
+        
+        confirmDialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                // Update custom availability
+                customAvailability.put(slotKey, newStatus);
+                
+                // Save to database/preferences if needed
+                saveAvailabilityToDatabase(date, time, newStatus);
+                
+                // Update slot appearance
+                updateSlotAppearance(slot, newStatus);
+                
+                // Update status label
+                Label statusLabel = (Label) slot.getChildren().get(slot.getChildren().size() - 1);
+                statusLabel.setText(getStatusText(newStatus));
+                statusLabel.getStyleClass().removeAll("status-available", "status-occupied", "status-unavailable");
+                statusLabel.getStyleClass().add(getStatusStyleClass(newStatus));
+                
+                // Show success message
+                showAlert("Success", String.format(
+                    "Time slot %s on %s has been set as %s",
+                    time, dateStr, statusStr
+                ));
+            }
+        });
+    }
+    
+    private void saveAvailabilityToDatabase(LocalDate date, String time, AvailabilityStatus status) {
+        try {
+            Database.Database db = new Database.Database();
+            
+            // Get current doctor
+            Model.Dokter doctor = db.getDokterByNama(doctorName);
+            if (doctor == null) {
+                return;
+            }
+            
+            // For now, we'll store this in a simple way
+            // You might want to create a separate table for doctor availability
+            // This is a placeholder implementation
+            
+            System.out.println(String.format(
+                "Saving availability for Dr. %s: %s %s = %s",
+                doctorName, date, time, status
+            ));
+            
+            // TODO: Implement actual database storage for custom availability
+            // This could involve creating a DoctorAvailability table with columns:
+            // - doctor_id, date, time, status
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private AvailabilityStatus getAvailability(LocalDate date, String time) {
+        String slotKey = date.toString() + "_" + time;
+        
+        // Check if this slot has been booked during this session
+        if (bookedSlots.contains(slotKey)) {
             return AvailabilityStatus.OCCUPIED;
         }
         
+        // Check database for existing appointments for this doctor
+        if (isSlotBookedForDoctor(date, time)) {
+            return AvailabilityStatus.OCCUPIED;
+        }
+        
+        // Check custom availability set by doctor
+        if (customAvailability.containsKey(slotKey)) {
+            return customAvailability.get(slotKey);
+        }
+        
+        // Check if availability was saved to database
+        AvailabilityStatus savedStatus = loadAvailabilityFromDatabase(date, time);
+        if (savedStatus != null) {
+            return savedStatus;
+        }
+        
+        // Default availability rules
+        if (date.getDayOfWeek().getValue() == 7) { // Sunday
+            return AvailabilityStatus.UNAVAILABLE;
+        }
+
+        if (time.equals("12:00") || time.equals("13:00")) { // Lunch break
+            return AvailabilityStatus.UNAVAILABLE;
+        }
+
         return AvailabilityStatus.AVAILABLE;
     }
     
-    private void handleTimeSlotClick(VBox slot, String slotKey, LocalDate date, String time) {
-        AvailabilityStatus currentStatus = doctorAvailability.getOrDefault(slotKey, getDefaultAvailability(date, time));
-        
-        // Show availability editor dialog
-        showAvailabilityEditor(slot, slotKey, date, time, currentStatus);
-    }
-    
-    private void showAvailabilityEditor(VBox slot, String slotKey, LocalDate date, String time, AvailabilityStatus currentStatus) {
-        Alert dialog = new Alert(Alert.AlertType.CONFIRMATION);
-        dialog.setTitle("Edit Availability");
-        dialog.setHeaderText("Set availability for " + date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d")) + " at " + time);
-        
-        // Create custom content
-        VBox content = new VBox(15);
-        content.setPadding(new Insets(20));
-        
-        Label instructionLabel = new Label("Select availability status:");
-        instructionLabel.setStyle("-fx-font-weight: bold;");
-        
-        ToggleGroup statusGroup = new ToggleGroup();
-        
-        RadioButton availableRadio = new RadioButton("Available");
-        availableRadio.setToggleGroup(statusGroup);
-        availableRadio.setStyle("-fx-text-fill: #2e7d32;");
-        
-        RadioButton occupiedRadio = new RadioButton("Occupied (Has appointment)");
-        occupiedRadio.setToggleGroup(statusGroup);
-        occupiedRadio.setStyle("-fx-text-fill: #ef6c00;");
-        
-        RadioButton unavailableRadio = new RadioButton("Unavailable");
-        unavailableRadio.setToggleGroup(statusGroup);
-        unavailableRadio.setStyle("-fx-text-fill: #c62828;");
-        
-        // Set current selection
-        switch (currentStatus) {
-            case AVAILABLE:
-                availableRadio.setSelected(true);
-                break;
-            case OCCUPIED:
-                occupiedRadio.setSelected(true);
-                break;
-            case UNAVAILABLE:
-                unavailableRadio.setSelected(true);
-                break;
-        }
-        
-        // Add patient name field for occupied status
-        Label patientLabel = new Label("Patient Name (if occupied):");
-        TextField patientField = new TextField();
-        patientField.setPromptText("Enter patient name");
-        patientField.setDisable(currentStatus != AvailabilityStatus.OCCUPIED);
-        
-        // Enable/disable patient field based on selection
-        occupiedRadio.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            patientField.setDisable(!newVal);
-            if (newVal) {
-                patientField.requestFocus();
-            } else {
-                patientField.clear();
+    private AvailabilityStatus loadAvailabilityFromDatabase(LocalDate date, String time) {
+        try {
+            Database.Database db = new Database.Database();
+            
+            // Get current doctor
+            Model.Dokter doctor = db.getDokterByNama(doctorName);
+            if (doctor == null) {
+                return null;
             }
-        });
-        
-        content.getChildren().addAll(
-            instructionLabel,
-            availableRadio,
-            occupiedRadio,
-            unavailableRadio,
-            patientLabel,
-            patientField
+            
+            // TODO: Implement actual database loading for custom availability
+            // This would query the DoctorAvailability table
+            
+            return null; // Placeholder
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void createCalendarLegend() {
+        // Create legend in the last row of the calendar
+        HBox legend = new HBox(20);
+        legend.setAlignment(Pos.CENTER);
+        legend.getStyleClass().add("calendar-legend");
+
+        // Available legend item
+        HBox availableItem = new HBox(8);
+        availableItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label availableColor = new Label();
+        availableColor.getStyleClass().addAll("legend-color", "legend-available");
+        availableColor.setPrefWidth(15);
+        availableColor.setPrefHeight(15);
+
+        Label availableText = new Label("Available - Click to toggle");
+        availableText.getStyleClass().add("legend-text");
+
+        availableItem.getChildren().addAll(availableColor, availableText);
+
+        // Occupied legend item
+        HBox occupiedItem = new HBox(8);
+        occupiedItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label occupiedColor = new Label();
+        occupiedColor.getStyleClass().addAll("legend-color", "legend-occupied");
+        occupiedColor.setPrefWidth(15);
+        occupiedColor.setPrefHeight(15);
+
+        Label occupiedText = new Label("Occupied - Cannot edit");
+        occupiedText.getStyleClass().add("legend-text");
+
+        occupiedItem.getChildren().addAll(occupiedColor, occupiedText);
+
+        // Unavailable legend item
+        HBox unavailableItem = new HBox(8);
+        unavailableItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label unavailableColor = new Label();
+        unavailableColor.getStyleClass().addAll("legend-color", "legend-unavailable");
+        unavailableColor.setPrefWidth(15);
+        unavailableColor.setPrefHeight(15);
+
+        Label unavailableText = new Label("Unavailable - Click to toggle");
+        unavailableText.getStyleClass().add("legend-text");
+
+        unavailableItem.getChildren().addAll(unavailableColor, unavailableText);
+
+        legend.getChildren().addAll(availableItem, occupiedItem, unavailableItem);
+
+        // Add legend to the calendar at the bottom
+        weeklyCalendar.add(legend, 0, 11, 8, 1); // Span across all columns
+        GridPane.setHalignment(legend, HPos.CENTER);
+    }
+
+    // Add method to reset availability to defaults
+    @FXML
+    private void handleResetAvailability(ActionEvent event) {
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmDialog.setTitle("Reset Availability");
+        confirmDialog.setHeaderText("Reset Calendar to Default");
+        confirmDialog.setContentText(
+            "This will reset your calendar to default availability settings:\n\n" +
+            "• Available: Monday-Saturday 9:00-11:00, 14:00-18:00\n" +
+            "• Unavailable: Sunday and lunch hours (12:00-13:00)\n\n" +
+            "All custom availability settings will be lost. Continue?"
         );
         
-        dialog.getDialogPane().setContent(content);
-        
-        // Handle the result
-        dialog.showAndWait().ifPresent(result -> {
+        confirmDialog.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                AvailabilityStatus newStatus;
-                if (availableRadio.isSelected()) {
-                    newStatus = AvailabilityStatus.AVAILABLE;
-                } else if (occupiedRadio.isSelected()) {
-                    newStatus = AvailabilityStatus.OCCUPIED;
-                } else {
-                    newStatus = AvailabilityStatus.UNAVAILABLE;
+                // Clear custom availability
+                customAvailability.clear();
+                
+                // Clear from database
+                clearAvailabilityFromDatabase();
+                
+                // Refresh calendar
+                if (scheduleTabContent.isVisible()) {
+                    loadWeeklyCalendar();
                 }
                 
-                // Update availability
-                doctorAvailability.put(slotKey, newStatus);
-                
-                // Update slot appearance
-                updateTimeSlot(slot, newStatus, patientField.getText());
-                
-                showAlert("Success", "Availability updated for " + date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d")) + " at " + time);
+                showAlert("Success", "Calendar availability has been reset to default settings.");
             }
         });
     }
     
-    private void updateTimeSlot(VBox slot, AvailabilityStatus status, String patientName) {
-        // Clear existing content
-        slot.getChildren().clear();
-        
-        // Update styling
-        updateSlotAppearance(slot, status);
-        
-        // Add patient info if occupied
-        if (status == AvailabilityStatus.OCCUPIED && !patientName.trim().isEmpty()) {
-            Label patientLabel = new Label(patientName.trim());
-            patientLabel.getStyleClass().add("calendar-appointment");
-            slot.getChildren().add(patientLabel);
-        } else if (status == AvailabilityStatus.OCCUPIED) {
-            Label patientLabel = new Label("Patient Visit");
-            patientLabel.getStyleClass().add("calendar-appointment");
-            slot.getChildren().add(patientLabel);
+    private void clearAvailabilityFromDatabase() {
+        try {
+            Database.Database db = new Database.Database();
+            
+            // Get current doctor
+            Model.Dokter doctor = db.getDokterByNama(doctorName);
+            if (doctor == null) {
+                return;
+            }
+            
+            // TODO: Implement database clearing for custom availability
+            System.out.println("Clearing custom availability for Dr. " + doctorName);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        
-        // Add status label
-        Label statusLabel = new Label(getStatusText(status));
-        statusLabel.getStyleClass().addAll("calendar-status-label", getStatusStyleClass(status));
-        slot.getChildren().add(statusLabel);
+    }
+
+    private void refreshCalendarView() {
+        // This method refreshes the calendar display
+        try {
+            Database.Database db = new Database.Database();
+            LocalDate today = LocalDate.now();
+            
+            // Reload statistics
+            loadRealData();
+            
+            // Reload today's appointments
+            loadTodayAppointments(db, today);
+            
+            // If calendar is visible, refresh it
+            if (scheduleTabContent.isVisible()) {
+                loadWeeklyCalendar();
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     
+    private boolean isSlotBookedForDoctor(LocalDate date, String time) {
+        try {
+            Database.Database db = new Database.Database();
+            
+            // Get current doctor's ID
+            Model.Dokter currentDoctor = db.getDokterByNama(doctorName);
+            if (currentDoctor == null) {
+                return false;
+            }
+            
+            java.util.List<Model.JadwalPemeriksaan> doctorAppointments = 
+                db.getJadwalPemeriksaanByDokterId(currentDoctor.getId());
+            
+            for (Model.JadwalPemeriksaan appointment : doctorAppointments) {
+                LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                String appointmentTime = appointment.getTanggalWaktu().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+                
+                if (appointmentDate.equals(date) && appointmentTime.equals(time)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    private String getPatientInfoForSlot(LocalDate date, String time) {
+        try {
+            Database.Database db = new Database.Database();
+            
+            // Get current doctor's ID
+            Model.Dokter currentDoctor = db.getDokterByNama(doctorName);
+            if (currentDoctor == null) {
+                return "";
+            }
+            
+            java.util.List<Model.JadwalPemeriksaan> doctorAppointments = 
+                db.getJadwalPemeriksaanByDokterId(currentDoctor.getId());
+            
+            for (Model.JadwalPemeriksaan appointment : doctorAppointments) {
+                LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                String appointmentTime = appointment.getTanggalWaktu().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+                
+                if (appointmentDate.equals(date) && appointmentTime.equals(time)) {
+                    // Get patient name
+                    Model.Pelanggan patient = db.getPelangganById(appointment.getIdPasien());
+                    if (patient != null) {
+                        return patient.getNama();
+                    }
+                    return "Patient";
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
     private void updateSlotAppearance(VBox slot, AvailabilityStatus status) {
         // Remove existing status classes
         slot.getStyleClass().removeAll("calendar-slot-available", "calendar-slot-occupied", "calendar-slot-unavailable");
         
-        // Add appropriate status class
+        // Add appropriate status class based on availability
         switch (status) {
             case AVAILABLE:
                 slot.getStyleClass().add("calendar-slot-available");
@@ -672,68 +887,71 @@ public class DoctorDashboardController implements Initializable {
                 break;
         }
     }
-    
+
     private String getStatusText(AvailabilityStatus status) {
         switch (status) {
-            case AVAILABLE: return "Available";
-            case OCCUPIED: return "Occupied";
-            case UNAVAILABLE: return "Unavailable";
-            default: return "";
+            case AVAILABLE:
+                return "Available";
+            case OCCUPIED:
+                return "Booked";
+            case UNAVAILABLE:
+                return "Unavailable";
+            default:
+                return "";
         }
     }
-    
+
     private String getStatusStyleClass(AvailabilityStatus status) {
         switch (status) {
-            case AVAILABLE: return "status-available";
-            case OCCUPIED: return "status-occupied";
-            case UNAVAILABLE: return "status-unavailable";
-            default: return "";
+            case AVAILABLE:
+                return "status-available";
+            case OCCUPIED:
+                return "status-occupied";
+            case UNAVAILABLE:
+                return "status-unavailable";
+            default:
+                return "";
         }
     }
-    
-    private void createCalendarLegend() {
-        // Create legend at the bottom of the calendar
-        HBox legend = new HBox(20);
-        legend.setAlignment(Pos.CENTER);
-        legend.getStyleClass().add("calendar-legend");
-        
-        // Available legend item
-        HBox availableItem = new HBox(8);
-        availableItem.setAlignment(Pos.CENTER_LEFT);
-        availableItem.getStyleClass().add("legend-item");
-        
-        Label availableColor = new Label();
-        availableColor.getStyleClass().addAll("legend-color", "legend-available");
-        Label availableText = new Label("Available");
-        availableText.getStyleClass().add("legend-text");
-        availableItem.getChildren().addAll(availableColor, availableText);
-        
-        // Occupied legend item
-        HBox occupiedItem = new HBox(8);
-        occupiedItem.setAlignment(Pos.CENTER_LEFT);
-        occupiedItem.getStyleClass().add("legend-item");
-        
-        Label occupiedColor = new Label();
-        occupiedColor.getStyleClass().addAll("legend-color", "legend-occupied");
-        Label occupiedText = new Label("Occupied");
-        occupiedText.getStyleClass().add("legend-text");
-        occupiedItem.getChildren().addAll(occupiedColor, occupiedText);
-        
-        // Unavailable legend item
-        HBox unavailableItem = new HBox(8);
-        unavailableItem.setAlignment(Pos.CENTER_LEFT);
-        unavailableItem.getStyleClass().add("legend-item");
-        
-        Label unavailableColor = new Label();
-        unavailableColor.getStyleClass().addAll("legend-color", "legend-unavailable");
-        Label unavailableText = new Label("Unavailable");
-        unavailableText.getStyleClass().add("legend-text");
-        unavailableItem.getChildren().addAll(unavailableColor, unavailableText);
-        
-        legend.getChildren().addAll(availableItem, occupiedItem, unavailableItem);
-        
-        // Add legend to calendar (spanning all columns)
-        weeklyCalendar.add(legend, 0, 11, 8, 1);
+
+    private void loadCalendar(GridPane calendar, Label weekLabel) {
+        calendar.getChildren().clear();
+
+        // Create header row
+        Label timeHeader = new Label("Time");
+        timeHeader.getStyleClass().add("calendar-header");
+        calendar.add(timeHeader, 0, 0);
+
+        String[] days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+        for (int i = 0; i < days.length; i++) {
+            VBox dayHeaderContainer = new VBox(5);
+            dayHeaderContainer.setAlignment(Pos.CENTER);
+
+            Label dayHeader = new Label(days[i]);
+            dayHeader.getStyleClass().add("calendar-header");
+
+            LocalDate dayDate = currentWeekStart.plusDays(i);
+            Label dateLabel = new Label(dayDate.getDayOfMonth() + "");
+            dateLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #546e7a;");
+
+            dayHeaderContainer.getChildren().addAll(dayHeader, dateLabel);
+            calendar.add(dayHeaderContainer, i + 1, 0);
+        }
+
+        // Create time slots with real-time availability checking
+        String[] timeSlots = {"09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"};
+
+        for (int row = 1; row <= timeSlots.length; row++) {
+            Label timeLabel = new Label(timeSlots[row - 1]);
+            timeLabel.getStyleClass().add("calendar-time");
+            calendar.add(timeLabel, 0, row);
+
+            for (int col = 1; col <= 7; col++) {
+                LocalDate dayDate = currentWeekStart.plusDays(col - 1);
+                VBox timeSlot = createTimeSlot(dayDate, timeSlots[row - 1]);
+                calendar.add(timeSlot, col, row);
+            }
+        }
     }
 
     @FXML
@@ -819,14 +1037,27 @@ public class DoctorDashboardController implements Initializable {
     
     private void loadAppointmentsForDate(Database.Database db, LocalDate date) {
         try {
-            // Query database for appointments on specific date
-            if (date.equals(LocalDate.now())) {
-                loadAppointmentCards();
-            } else {
-                clearAppointmentData();
+            if (doctorName != null) {
+                Model.Dokter doctor = db.getDokterByNama(doctorName);
+                if (doctor != null) {
+                    java.util.List<Model.JadwalPemeriksaan> appointments = 
+                        db.getJadwalPemeriksaanByDokterId(doctor.getId());
+                    
+                    // Filter for selected date's appointments
+                    java.util.List<Model.JadwalPemeriksaan> dateAppointments = appointments.stream()
+                        .filter(appointment -> {
+                            LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                            return appointmentDate.equals(date);
+                        })
+                        .collect(java.util.stream.Collectors.toList());
+                    
+                    // Load appointment cards with real data
+                    loadRealAppointmentCards(dateAppointments, db);
+                }
             }
-            
         } catch (Exception e) {
+            e.printStackTrace();
             clearAppointmentData();
         }
     }
@@ -938,5 +1169,29 @@ public class DoctorDashboardController implements Initializable {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    public void refreshCalendarFromPatientBooking() {
+        // This method can be called when a patient books an appointment
+        // to refresh the doctor's calendar view
+        
+        // Reload real-time data
+        loadRealData();
+        
+        // If schedule tab is currently visible, refresh the calendar
+        if (scheduleTabContent.isVisible()) {
+            loadWeeklyCalendar();
+        }
+        
+        // If appointments tab is visible, refresh appointment cards
+        if (appointmentsTabContent.isVisible()) {
+            try {
+                Database.Database db = new Database.Database();
+                LocalDate today = LocalDate.now();
+                loadTodayAppointments(db, today);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

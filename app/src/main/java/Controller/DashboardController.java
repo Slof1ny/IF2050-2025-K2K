@@ -38,7 +38,7 @@ public class DashboardController implements Initializable {
     // Add fields to track selections
     private String selectedDoctor = null;
     private String selectedAppointmentType = null;
-    private HBox selectedDoctorCard = null; // Changed from VBox to HBox
+    private HBox selectedDoctorCard = null;
     private VBox selectedTypeCard = null;
     private boolean showingCalendar = false;
     private boolean showingAppointmentTypes = false;
@@ -48,6 +48,16 @@ public class DashboardController implements Initializable {
     // Add enum for availability status (customer view)
     private enum AvailabilityStatus {
         AVAILABLE, OCCUPIED, UNAVAILABLE
+    }
+
+    // Add field to track booked appointments
+    private java.util.Set<String> bookedSlots = new java.util.HashSet<>();
+
+    // Add static reference to doctor dashboard for updates
+    private static DoctorDashboardController doctorDashboardInstance = null;
+    
+    public static void setDoctorDashboardInstance(DoctorDashboardController instance) {
+        doctorDashboardInstance = instance;
     }
 
     public static void setLoginInfo(String role, String name) {
@@ -327,6 +337,17 @@ public class DashboardController implements Initializable {
     }
 
     private AvailabilityStatus getSimulatedAvailability(LocalDate date, String time) {
+        // Check if this slot has been booked during this session
+        String slotKey = date.toString() + "_" + time;
+        if (bookedSlots.contains(slotKey)) {
+            return AvailabilityStatus.OCCUPIED;
+        }
+        
+        // Check database for existing appointments
+        if (isSlotBookedInDatabase(date, time)) {
+            return AvailabilityStatus.OCCUPIED;
+        }
+        
         // Simulate doctor availability (same logic as doctor dashboard)
         if (date.getDayOfWeek().getValue() == 7) { // Sunday
             return AvailabilityStatus.UNAVAILABLE;
@@ -336,7 +357,7 @@ public class DashboardController implements Initializable {
             return AvailabilityStatus.UNAVAILABLE;
         }
 
-        // Some sample occupied slots
+        // Some sample occupied slots (legacy for demo purposes)
         if ((date.getDayOfWeek().getValue() == 1 && time.equals("10:00")) ||
             (date.getDayOfWeek().getValue() == 3 && time.equals("14:00")) ||
             (date.getDayOfWeek().getValue() == 5 && time.equals("16:00"))) {
@@ -344,6 +365,28 @@ public class DashboardController implements Initializable {
         }
 
         return AvailabilityStatus.AVAILABLE;
+    }
+    
+    private boolean isSlotBookedInDatabase(LocalDate date, String time) {
+        try {
+            Database.Database db = new Database.Database();
+            java.util.List<Model.JadwalPemeriksaan> allAppointments = db.getAllJadwalPemeriksaan();
+            
+            for (Model.JadwalPemeriksaan appointment : allAppointments) {
+                LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                String appointmentTime = appointment.getTanggalWaktu().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+                
+                if (appointmentDate.equals(date) && appointmentTime.equals(time)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     private void handleAppointmentBooking(LocalDate date, String time) {
@@ -394,17 +437,17 @@ public class DashboardController implements Initializable {
                         "Date: " + date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "\n" +
                         "Time: " + time + "\n" +
                         "Type: " + (selectedAppointmentType != null ? selectedAppointmentType : "Regular Checkup"));
+                    
+                    // Reset selections and refresh calendar
+                    resetBookingSelections();
+                    
+                    // Refresh the booking content to show updated calendar
+                    VBox container = getAppointmentContentContainer();
+                    if (container != null) {
+                        loadBookAppointmentContent(container);
+                    }
                 } else {
                     showAlert("Error", "Failed to book appointment. Please try again.");
-                }
-                
-                // Reset selections and go back to selection view
-                resetBookingSelections();
-                
-                // Refresh the booking content to show selection screen again
-                VBox container = getAppointmentContentContainer();
-                if (container != null) {
-                    loadBookAppointmentContent(container);
                 }
             }
         });
@@ -421,7 +464,7 @@ public class DashboardController implements Initializable {
                 return false;
             }
             
-            // Get current patient ID (you might need to implement this based on your login system)
+            // Get current patient ID
             int patientId = getCurrentPatientId();
             if (patientId == -1) {
                 System.err.println("Patient not logged in or patient ID not found");
@@ -442,11 +485,42 @@ public class DashboardController implements Initializable {
             );
             
             // Save to database
-            return db.addJadwalPemeriksaan(jadwal);
+            boolean saved = db.addJadwalPemeriksaan(jadwal);
+            
+            if (saved) {
+                // Mark this slot as booked in the current session
+                String slotKey = date.toString() + "_" + time;
+                bookedSlots.add(slotKey);
+                
+                // Refresh the calendar to show the updated availability
+                refreshCalendarDisplay();
+                
+                // Notify doctor dashboard if it's open and it's the same doctor
+                if (doctorDashboardInstance != null) {
+                    // Check if the logged doctor matches the appointment doctor
+                    String loggedDoctorName = DoctorDashboardController.getLoggedDoctorName();
+                    if (loggedDoctorName != null && loggedDoctorName.equals(doctorName)) {
+                        doctorDashboardInstance.refreshCalendarFromPatientBooking();
+                    }
+                }
+            }
+            
+            return saved;
             
         } catch (Exception e) {
             e.printStackTrace();
             return false;
+        }
+    }
+    
+    private void refreshCalendarDisplay() {
+        // Refresh the appointment tab calendar if it's currently visible
+        if (currentActiveTab.equals("appointments")) {
+            // Refresh the booking calendar
+            VBox container = getAppointmentContentContainer();
+            if (container != null && !showingAppointmentTypes) {
+                loadBookAppointmentContent(container);
+            }
         }
     }
     
@@ -861,7 +935,7 @@ public class DashboardController implements Initializable {
             calendar.add(dayHeaderContainer, i + 1, 0);
         }
 
-        // Create time slots
+        // Create time slots with updated availability
         String[] timeSlots = {"09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"};
 
         for (int row = 1; row <= timeSlots.length; row++) {
