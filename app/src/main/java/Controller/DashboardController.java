@@ -347,6 +347,12 @@ public class DashboardController implements Initializable {
     }
 
     private void handleAppointmentBooking(LocalDate date, String time) {
+        // Validate that a doctor is selected
+        if (selectedDoctor == null) {
+            showAlert("No Doctor Selected", "Please select a doctor before booking an appointment.");
+            return;
+        }
+        
         Alert bookingDialog = new Alert(Alert.AlertType.CONFIRMATION);
         bookingDialog.setTitle("Book Appointment");
         bookingDialog.setHeaderText("Confirm Appointment Booking");
@@ -358,7 +364,7 @@ public class DashboardController implements Initializable {
             date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + " at " + time);
         dateTimeLabel.getStyleClass().add("patient-name");
 
-        Label doctorLabel = new Label("Doctor: " + (selectedDoctor != null ? selectedDoctor : "DR. Available Doctor"));
+        Label doctorLabel = new Label("Doctor: " + selectedDoctor);
         doctorLabel.getStyleClass().add("field-label");
 
         Label typeLabel = new Label("Appointment Type: " + (selectedAppointmentType != null ? selectedAppointmentType : "Regular Checkup"));
@@ -377,106 +383,94 @@ public class DashboardController implements Initializable {
 
         bookingDialog.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                showAlert("Success", "Appointment booked successfully!\n\n" +
-                    "Doctor: " + (selectedDoctor != null ? selectedDoctor : "DR. Available Doctor") + "\n" +
-                    "Date: " + date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "\n" +
-                    "Time: " + time + "\n" +
-                    "Type: " + (selectedAppointmentType != null ? selectedAppointmentType : "Regular Checkup"));
+                // Try to save the appointment to database
+                boolean appointmentSaved = saveAppointmentToDatabase(date, time, selectedDoctor, 
+                    selectedAppointmentType != null ? selectedAppointmentType : "Regular Checkup", 
+                    notesArea.getText());
+                
+                if (appointmentSaved) {
+                    showAlert("Success", "Appointment booked successfully!\n\n" +
+                        "Doctor: " + selectedDoctor + "\n" +
+                        "Date: " + date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "\n" +
+                        "Time: " + time + "\n" +
+                        "Type: " + (selectedAppointmentType != null ? selectedAppointmentType : "Regular Checkup"));
+                } else {
+                    showAlert("Error", "Failed to book appointment. Please try again.");
+                }
                 
                 // Reset selections and go back to selection view
-                selectedDoctor = null;
-                selectedAppointmentType = null;
-                showingCalendar = false;
-                if (selectedDoctorCard != null) {
-                    selectedDoctorCard.getStyleClass().remove("doctor-card-selected");
-                    selectedDoctorCard = null;
-                }
-                if (selectedTypeCard != null) {
-                    selectedTypeCard.getStyleClass().remove("appointment-type-card-selected");
-                    selectedTypeCard = null;
-                }
+                resetBookingSelections();
                 
                 // Refresh the booking content to show selection screen again
-                VBox container = (VBox) appointmentsTabContent.lookup("VBox");
+                VBox container = getAppointmentContentContainer();
                 if (container != null) {
-                    ScrollPane scrollPane = (ScrollPane) appointmentsTabContent.getChildren().get(0);
-                    VBox scrollableContent = (VBox) scrollPane.getContent();
-                    VBox contentContainer = (VBox) scrollableContent.getChildren().get(2); // Main content container
-                    loadBookAppointmentContent(contentContainer);
+                    loadBookAppointmentContent(container);
                 }
             }
         });
     }
-
-    private void updateCustomerSlotAppearance(VBox slot, AvailabilityStatus status) {
-        switch (status) {
-            case AVAILABLE:
-                slot.getStyleClass().add("calendar-slot-available");
-                break;
-            case OCCUPIED:
-                slot.getStyleClass().add("calendar-slot-occupied");
-                break;
-            case UNAVAILABLE:
-                slot.getStyleClass().add("calendar-slot-unavailable");
-                break;
+    
+    private boolean saveAppointmentToDatabase(LocalDate date, String time, String doctorName, String appointmentType, String notes) {
+        try {
+            Database.Database db = new Database.Database();
+            
+            // Get doctor by name
+            Model.Dokter doctor = db.getDokterByNama(doctorName);
+            if (doctor == null) {
+                System.err.println("Doctor not found: " + doctorName);
+                return false;
+            }
+            
+            // Get current patient ID (you might need to implement this based on your login system)
+            int patientId = getCurrentPatientId();
+            if (patientId == -1) {
+                System.err.println("Patient not logged in or patient ID not found");
+                return false;
+            }
+            
+            // Create appointment date-time
+            java.util.Date appointmentDateTime = java.sql.Timestamp.valueOf(
+                date.toString() + " " + time + ":00"
+            );
+            
+            // Create JadwalPemeriksaan object
+            Model.JadwalPemeriksaan jadwal = new Model.JadwalPemeriksaan(
+                0, // ID will be auto-generated
+                appointmentDateTime,
+                patientId,
+                doctor.getId()
+            );
+            
+            // Save to database
+            return db.addJadwalPemeriksaan(jadwal);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
-
-    private String getCustomerStatusText(AvailabilityStatus status) {
-        switch (status) {
-            case AVAILABLE: return "Available";
-            case OCCUPIED: return "Booked";
-            case UNAVAILABLE: return "Unavailable";
-            default: return "";
+    
+    private int getCurrentPatientId() {
+        try {
+            Database.Database db = new Database.Database();
+            // Get patient by logged name (assuming loggedName contains patient name)
+            java.util.List<Model.Pelanggan> patients = db.searchPelangganByNama(loggedName);
+            
+            if (!patients.isEmpty()) {
+                return patients.get(0).getId();
+            }
+            
+            // Alternative: get by exact name match
+            for (Model.Pelanggan patient : db.getAllPelanggan()) {
+                if (patient.getNama().equals(loggedName)) {
+                    return patient.getId();
+                }
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-    }
-
-    private String getCustomerStatusStyleClass(AvailabilityStatus status) {
-        switch (status) {
-            case AVAILABLE: return "status-available";
-            case OCCUPIED: return "status-occupied";
-            case UNAVAILABLE: return "status-unavailable";
-            default: return "";
-        }
-    }
-
-    private HBox createAppointmentLegend() {
-        HBox legend = new HBox(20);
-        legend.setAlignment(Pos.CENTER);
-        legend.getStyleClass().add("calendar-legend");
-
-        // Available legend item
-        HBox availableItem = new HBox(8);
-        availableItem.setAlignment(Pos.CENTER_LEFT);
-
-        Label availableColor = new Label();
-        availableColor.getStyleClass().addAll("legend-color", "legend-available");
-        Label availableText = new Label("Available - Click to book");
-        availableText.getStyleClass().add("legend-text");
-        availableItem.getChildren().addAll(availableColor, availableText);
-
-        // Booked legend item
-        HBox bookedItem = new HBox(8);
-        bookedItem.setAlignment(Pos.CENTER_LEFT);
-
-        Label bookedColor = new Label();
-        bookedColor.getStyleClass().addAll("legend-color", "legend-occupied");
-        Label bookedText = new Label("Already Booked");
-        bookedText.getStyleClass().add("legend-text");
-        bookedItem.getChildren().addAll(bookedColor, bookedText);
-
-        // Unavailable legend item
-        HBox unavailableItem = new HBox(8);
-        unavailableItem.setAlignment(Pos.CENTER_LEFT);
-
-        Label unavailableColor = new Label();
-        unavailableColor.getStyleClass().addAll("legend-color", "legend-unavailable");
-        Label unavailableText = new Label("Unavailable");
-        unavailableText.getStyleClass().add("legend-text");
-        unavailableItem.getChildren().addAll(unavailableColor, unavailableText);
-
-        legend.getChildren().addAll(availableItem, bookedItem, unavailableItem);
-        return legend;
+        return -1; // Return -1 if patient not found
     }
 
     private void showAlert(String title, String message) {
@@ -703,15 +697,9 @@ public class DashboardController implements Initializable {
         HBox doctorGrid = new HBox(10);
         doctorGrid.setAlignment(Pos.CENTER);
         
-        // Create smaller doctor cards
-        HBox[] doctorCards = {
-            createCompactDoctorCard("Dr. Sarah Johnson", "Eye Specialist"),
-            createCompactDoctorCard("Dr. Michael Chen", "Optometrist"),
-            createCompactDoctorCard("Dr. Emily Wilson", "Pediatric Optometrist"),
-            createCompactDoctorCard("Dr. David Brown", "Contact Lens Specialist")
-        };
+        // Load real doctors from database
+        loadDoctorCards(doctorGrid);
         
-        doctorGrid.getChildren().addAll(doctorCards);
         doctorSection.getChildren().addAll(doctorSectionHeader, doctorGrid);
         
         // Calendar section
@@ -819,6 +807,34 @@ public class DashboardController implements Initializable {
         card.getChildren().add(doctorInfo);
         
         return card;
+    }
+    
+    private void loadDoctorCards(HBox doctorGrid) {
+        try {
+            Database.Database db = new Database.Database();
+            java.util.List<Model.Dokter> doctors = db.getAllDokter();
+            
+            if (doctors.isEmpty()) {
+                // Show message if no doctors available
+                Label noDoctorsLabel = new Label("No doctors available at the moment");
+                noDoctorsLabel.getStyleClass().add("card-description");
+                doctorGrid.getChildren().add(noDoctorsLabel);
+                return;
+            }
+            
+            // Create doctor cards from database data
+            for (Model.Dokter doctor : doctors) {
+                HBox doctorCard = createCompactDoctorCard(doctor.getNama(), doctor.getSpesialisasi());
+                doctorGrid.getChildren().add(doctorCard);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Fallback to show error message
+            Label errorLabel = new Label("Error loading doctors. Please try again.");
+            errorLabel.getStyleClass().add("card-description");
+            doctorGrid.getChildren().add(errorLabel);
+        }
     }
     
     private void loadBookingCalendar(GridPane calendar, Label weekLabel) {
@@ -1005,16 +1021,24 @@ public class DashboardController implements Initializable {
         notesArea.setPrefRowCount(3);
         notesArea.setPromptText("Enter any additional information or symptoms...");
 
-        content.getChildren().addAll(summaryLabel, doctorLabel, dateLabel, timeLabel, typeLabel, notesLabel, notesArea);
+        content.getChildren().addAll(summaryLabel, doctorLabel, dateLabel, timeLabel, notesLabel, notesArea);
         bookingDialog.getDialogPane().setContent(content);
 
         bookingDialog.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                showAlert("Success", "Appointment booked successfully!\n\n" +
-                    "Doctor: " + selectedDoctor + "\n" +
-                    "Date: " + selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "\n" +
-                    "Time: " + selectedTime + "\n" +
-                    "Type: " + selectedAppointmentType);
+                // Try to save the appointment to database
+                boolean appointmentSaved = saveAppointmentToDatabase(selectedDate, selectedTime, selectedDoctor, 
+                    selectedAppointmentType, notesArea.getText());
+                
+                if (appointmentSaved) {
+                    showAlert("Success", "Appointment booked successfully!\n\n" +
+                        "Doctor: " + selectedDoctor + "\n" +
+                        "Date: " + selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "\n" +
+                        "Time: " + selectedTime + "\n" +
+                        "Type: " + selectedAppointmentType);
+                } else {
+                    showAlert("Error", "Failed to book appointment. Please try again.");
+                }
                 
                 // Reset all selections
                 resetBookingSelections();
@@ -1026,148 +1050,6 @@ public class DashboardController implements Initializable {
                 }
             }
         });
-    }
-    
-    private void resetBookingSelections() {
-        selectedDoctor = null;
-        selectedAppointmentType = null;
-        selectedDate = null;
-        selectedTime = null;
-        showingAppointmentTypes = false;
-        
-        if (selectedDoctorCard != null) {
-            selectedDoctorCard.getStyleClass().remove("compact-doctor-card-selected");
-            selectedDoctorCard = null;
-        }
-        if (selectedTypeCard != null) {
-            selectedTypeCard.getStyleClass().remove("appointment-type-card-selected");
-            selectedTypeCard = null;
-        }
-    }
-    
-    private VBox getAppointmentContentContainer() {
-        try {
-            ScrollPane scrollPane = (ScrollPane) appointmentsTabContent.getChildren().get(0);
-            VBox scrollableContent = (VBox) scrollPane.getContent();
-            return (VBox) scrollableContent.getChildren().get(2); // Content container
-        } catch (Exception e) {
-            return null;
-        }
-    }
-    
-    private void loadUpcomingAppointments(VBox container) {
-        container.getChildren().clear();
-        
-        Label upcomingHeader = new Label("Upcoming Appointments");
-        upcomingHeader.getStyleClass().add("card-title");
-        
-        VBox appointmentsList = new VBox(10);
-        appointmentsList.getChildren().addAll(
-            createAppointmentCard("Eye Examination", "January 25, 2024", "10:00 AM", "Dr. Smith"),
-            createAppointmentCard("Follow-up Visit", "February 5, 2024", "2:00 PM", "Dr. Johnson"),
-            createAppointmentCard("Contact Lens Fitting", "February 15, 2024", "11:30 AM", "Dr. Brown"),
-            createAppointmentCard("Regular Checkup", "February 20, 2024", "9:00 AM", "Dr. Wilson"),
-            createAppointmentCard("Eye Examination", "March 1, 2024", "3:00 PM", "Dr. Davis"),
-            createAppointmentCard("Contact Lens Fitting", "March 10, 2024", "10:30 AM", "Dr. Miller")
-        );
-        
-        container.getChildren().addAll(upcomingHeader, appointmentsList);
-    }
-    
-    private void loadHistoryAppointments(VBox container) {
-        container.getChildren().clear();
-        
-        Label historyHeader = new Label("Appointment History");
-        historyHeader.getStyleClass().add("card-title");
-        
-        VBox historyList = new VBox(10);
-        historyList.getChildren().addAll(
-            createAppointmentCard("Eye Examination", "December 15, 2023", "2:00 PM", "Dr. Smith"),
-            createAppointmentCard("Regular Checkup", "November 20, 2023", "11:00 AM", "Dr. Johnson"),
-            createAppointmentCard("Follow-up Visit", "October 10, 2023", "4:00 PM", "Dr. Brown"),
-            createAppointmentCard("Contact Lens Fitting", "September 5, 2023", "1:00 PM", "Dr. Wilson"),
-            createAppointmentCard("Eye Examination", "August 15, 2023", "3:30 PM", "Dr. Davis"),
-            createAppointmentCard("Regular Checkup", "July 20, 2023", "9:30 AM", "Dr. Miller"),
-            createAppointmentCard("Follow-up Visit", "June 10, 2023", "2:30 PM", "Dr. Smith"),
-            createAppointmentCard("Contact Lens Fitting", "May 5, 2023", "11:30 AM", "Dr. Johnson")
-        );
-        
-        container.getChildren().addAll(historyHeader, historyList);
-    }
-
-    private void loadDashboardContent() {
-        dashboardTabContent.getChildren().clear();
-        
-        Label header = new Label("Patient Dashboard");
-        header.getStyleClass().add("section-title");
-        
-        // Quick actions grid
-        GridPane quickActions = new GridPane();
-        quickActions.setHgap(20);
-        quickActions.setVgap(20);
-        quickActions.setAlignment(Pos.CENTER);
-        
-        VBox appointmentCard = createDashboardCard("Appointments", "Manage your appointments", e -> handleAppointments());
-        VBox prescriptionCard = createDashboardCard("Prescriptions", "View your prescriptions", e -> handlePrescription());
-        VBox historyCard = createDashboardCard("Medical History", "Access your records", e -> handleHistory());
-        VBox settingsCard = createDashboardCard("Settings", "Update preferences", e -> handleSettings());
-        
-        quickActions.add(appointmentCard, 0, 0);
-        quickActions.add(prescriptionCard, 1, 0);
-        quickActions.add(historyCard, 0, 1);
-        quickActions.add(settingsCard, 1, 1);
-        
-        dashboardTabContent.getChildren().addAll(header, quickActions);
-    }
-
-    private void loadProfileContent() {
-        profileTabContent.getChildren().clear();
-        
-        Label header = new Label("My Profile");
-        header.getStyleClass().add("section-title");
-        
-        VBox profileInfo = new VBox(15);
-        profileInfo.setAlignment(Pos.CENTER_LEFT);
-        
-        profileInfo.getChildren().addAll(
-            createProfileRow("Name", loggedName.isEmpty() ? "Customer User" : loggedName),
-            createProfileRow("Role", loggedRole.isEmpty() ? "Customer" : loggedRole),
-            createProfileRow("Email", "customer@example.com"),
-            createProfileRow("Phone", "+62 123 456 7890"),
-            createProfileRow("Address", "123 Main Street, City"),
-            createProfileRow("Member Since", "January 2024")
-        );
-        
-        HBox profileActions = new HBox(15);
-        profileActions.setAlignment(Pos.CENTER);
-        
-        Button editBtn = new Button("Edit Profile");
-        editBtn.getStyleClass().add("hero-button-primary");
-        editBtn.setOnAction(e -> showAlert("Edit Profile", "Edit profile functionality"));
-        
-        Button logoutBtn = new Button("Logout");
-        logoutBtn.getStyleClass().add("hero-button-secondary");
-        logoutBtn.setOnAction(e -> handleLogout());
-        
-        profileActions.getChildren().addAll(editBtn, logoutBtn);
-        
-        profileTabContent.getChildren().addAll(header, profileInfo, profileActions);
-    }
-
-    private void loadCartContent() {
-        cartTabContent.getChildren().clear();
-        
-        Label header = new Label("Shopping Cart");
-        header.getStyleClass().add("section-title");
-        
-        Label emptyMessage = new Label("Your cart is currently empty");
-        emptyMessage.getStyleClass().add("section-subtitle");
-        
-        Button shopBtn = new Button("Start Shopping");
-        shopBtn.getStyleClass().add("hero-button-primary");
-        shopBtn.setOnAction(e -> handleProducts());
-        
-        cartTabContent.getChildren().addAll(header, emptyMessage, shopBtn);
     }
 
     // Helper methods for creating UI components
@@ -1274,5 +1156,290 @@ public class DashboardController implements Initializable {
         
         card.getChildren().addAll(titleLabel, descLabel);
         return card;
+    }
+
+    private void resetBookingSelections() {
+        selectedDoctor = null;
+        selectedAppointmentType = null;
+        selectedDate = null;
+        selectedTime = null;
+        showingAppointmentTypes = false;
+        
+        if (selectedDoctorCard != null) {
+            selectedDoctorCard.getStyleClass().remove("compact-doctor-card-selected");
+            selectedDoctorCard = null;
+        }
+        if (selectedTypeCard != null) {
+            selectedTypeCard.getStyleClass().remove("appointment-type-card-selected");
+            selectedTypeCard = null;
+        }
+    }
+    
+    private VBox getAppointmentContentContainer() {
+        try {
+            ScrollPane scrollPane = (ScrollPane) appointmentsTabContent.getChildren().get(0);
+            VBox scrollableContent = (VBox) scrollPane.getContent();
+            return (VBox) scrollableContent.getChildren().get(2); // Content container
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void updateCustomerSlotAppearance(VBox slot, AvailabilityStatus status) {
+        // Remove existing status classes
+        slot.getStyleClass().removeAll("calendar-slot-available", "calendar-slot-occupied", "calendar-slot-unavailable");
+        
+        // Add appropriate status class
+        switch (status) {
+            case AVAILABLE:
+                slot.getStyleClass().add("calendar-slot-available");
+                break;
+            case OCCUPIED:
+                slot.getStyleClass().add("calendar-slot-occupied");
+                break;
+            case UNAVAILABLE:
+                slot.getStyleClass().add("calendar-slot-unavailable");
+                break;
+        }
+    }
+
+    private String getCustomerStatusText(AvailabilityStatus status) {
+        switch (status) {
+            case AVAILABLE: return "Available";
+            case OCCUPIED: return "Booked";
+            case UNAVAILABLE: return "Unavailable";
+            default: return "";
+        }
+    }
+
+    private String getCustomerStatusStyleClass(AvailabilityStatus status) {
+        switch (status) {
+            case AVAILABLE: return "status-available";
+            case OCCUPIED: return "status-occupied";
+            case UNAVAILABLE: return "status-unavailable";
+            default: return "";
+        }
+    }
+
+    private HBox createAppointmentLegend() {
+        HBox legend = new HBox(20);
+        legend.setAlignment(Pos.CENTER);
+        legend.getStyleClass().add("calendar-legend");
+
+        // Available legend item
+        HBox availableItem = new HBox(8);
+        availableItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label availableColor = new Label();
+        availableColor.getStyleClass().addAll("legend-color", "legend-available");
+        Label availableText = new Label("Available - Click to book");
+        availableText.getStyleClass().add("legend-text");
+        availableItem.getChildren().addAll(availableColor, availableText);
+
+        // Booked legend item
+        HBox bookedItem = new HBox(8);
+        bookedItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label bookedColor = new Label();
+        bookedColor.getStyleClass().addAll("legend-color", "legend-occupied");
+        Label bookedText = new Label("Already Booked");
+        bookedText.getStyleClass().add("legend-text");
+        bookedItem.getChildren().addAll(bookedColor, bookedText);
+
+        // Unavailable legend item
+        HBox unavailableItem = new HBox(8);
+        unavailableItem.setAlignment(Pos.CENTER_LEFT);
+
+        Label unavailableColor = new Label();
+        unavailableColor.getStyleClass().addAll("legend-color", "legend-unavailable");
+        Label unavailableText = new Label("Unavailable");
+        unavailableText.getStyleClass().add("legend-text");
+        unavailableItem.getChildren().addAll(unavailableColor, unavailableText);
+
+        legend.getChildren().addAll(availableItem, bookedItem, unavailableItem);
+        return legend;
+    }
+    
+    private void loadUpcomingAppointments(VBox container) {
+        container.getChildren().clear();
+        
+        Label upcomingHeader = new Label("Upcoming Appointments");
+        upcomingHeader.getStyleClass().add("card-title");
+        
+        try {
+            Database.Database db = new Database.Database();
+            int patientId = getCurrentPatientId();
+            
+            if (patientId != -1) {
+                java.util.List<Model.JadwalPemeriksaan> appointments = db.getJadwalPemeriksaanByPasienId(patientId);
+                
+                VBox appointmentsList = new VBox(10);
+                
+                if (appointments.isEmpty()) {
+                    Label noAppointmentsLabel = new Label("No upcoming appointments");
+                    noAppointmentsLabel.getStyleClass().add("card-description");
+                    appointmentsList.getChildren().add(noAppointmentsLabel);
+                } else {
+                    for (Model.JadwalPemeriksaan appointment : appointments) {
+                        // Filter for future appointments
+                        if (appointment.getTanggalWaktu().after(new java.util.Date())) {
+                            Model.Dokter doctor = db.getDokterById(appointment.getIdDokter());
+                            String doctorName = doctor != null ? doctor.getNama() : "Unknown Doctor";
+                            
+                            LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                            String formattedDate = appointmentDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
+                            String formattedTime = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+                                .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"));
+                            
+                            VBox appointmentCard = createAppointmentCard("Appointment", formattedDate, formattedTime, doctorName);
+                            appointmentsList.getChildren().add(appointmentCard);
+                        }
+                    }
+                }
+                
+                container.getChildren().addAll(upcomingHeader, appointmentsList);
+            } else {
+                Label errorLabel = new Label("Unable to load appointments. Please log in.");
+                errorLabel.getStyleClass().add("card-description");
+                container.getChildren().addAll(upcomingHeader, errorLabel);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            Label errorLabel = new Label("Error loading appointments.");
+            errorLabel.getStyleClass().add("card-description");
+            container.getChildren().addAll(upcomingHeader, errorLabel);
+        }
+    }
+    
+    private void loadHistoryAppointments(VBox container) {
+        container.getChildren().clear();
+        
+        Label historyHeader = new Label("Appointment History");
+        historyHeader.getStyleClass().add("card-title");
+        
+        try {
+            Database.Database db = new Database.Database();
+            int patientId = getCurrentPatientId();
+            
+            if (patientId != -1) {
+                java.util.List<Model.JadwalPemeriksaan> appointments = db.getJadwalPemeriksaanByPasienId(patientId);
+                
+                VBox historyList = new VBox(10);
+                
+                if (appointments.isEmpty()) {
+                    Label noHistoryLabel = new Label("No appointment history");
+                    noHistoryLabel.getStyleClass().add("card-description");
+                    historyList.getChildren().add(noHistoryLabel);
+                } else {
+                    for (Model.JadwalPemeriksaan appointment : appointments) {
+                        // Filter for past appointments
+                        if (appointment.getTanggalWaktu().before(new java.util.Date())) {
+                            Model.Dokter doctor = db.getDokterById(appointment.getIdDokter());
+                            String doctorName = doctor != null ? doctor.getNama() : "Unknown Doctor";
+                            
+                            LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                            String formattedDate = appointmentDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
+                            String formattedTime = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+                                .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"));
+                            
+                            VBox appointmentCard = createAppointmentCard("Past Appointment", formattedDate, formattedTime, doctorName);
+                            historyList.getChildren().add(appointmentCard);
+                        }
+                    }
+                }
+                
+                container.getChildren().addAll(historyHeader, historyList);
+            } else {
+                Label errorLabel = new Label("Unable to load appointment history. Please log in.");
+                errorLabel.getStyleClass().add("card-description");
+                container.getChildren().addAll(historyHeader, errorLabel);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            Label errorLabel = new Label("Error loading appointment history.");
+            errorLabel.getStyleClass().add("card-description");
+            container.getChildren().addAll(historyHeader, errorLabel);
+        }
+    }
+
+    private void loadDashboardContent() {
+        dashboardTabContent.getChildren().clear();
+        
+        Label header = new Label("Patient Dashboard");
+        header.getStyleClass().add("section-title");
+        
+        // Quick actions grid
+        GridPane quickActions = new GridPane();
+        quickActions.setHgap(20);
+        quickActions.setVgap(20);
+        quickActions.setAlignment(Pos.CENTER);
+        
+        VBox appointmentCard = createDashboardCard("Appointments", "Manage your appointments", e -> handleAppointments());
+        VBox prescriptionCard = createDashboardCard("Prescriptions", "View your prescriptions", e -> handlePrescription());
+        VBox historyCard = createDashboardCard("Medical History", "Access your records", e -> handleHistory());
+        VBox settingsCard = createDashboardCard("Settings", "Update preferences", e -> handleSettings());
+        
+        quickActions.add(appointmentCard, 0, 0);
+        quickActions.add(prescriptionCard, 1, 0);
+        quickActions.add(historyCard, 0, 1);
+        quickActions.add(settingsCard, 1, 1);
+        
+        dashboardTabContent.getChildren().addAll(header, quickActions);
+    }
+
+    private void loadProfileContent() {
+        profileTabContent.getChildren().clear();
+        
+        Label header = new Label("My Profile");
+        header.getStyleClass().add("section-title");
+        
+        VBox profileInfo = new VBox(15);
+        profileInfo.setAlignment(Pos.CENTER_LEFT);
+        
+        profileInfo.getChildren().addAll(
+            createProfileRow("Name", loggedName.isEmpty() ? "Customer User" : loggedName),
+            createProfileRow("Role", loggedRole.isEmpty() ? "Customer" : loggedRole),
+            createProfileRow("Email", "customer@example.com"),
+            createProfileRow("Phone", "+62 123 456 7890"),
+            createProfileRow("Address", "123 Main Street, City"),
+            createProfileRow("Member Since", "January 2024")
+        );
+        
+        HBox profileActions = new HBox(15);
+        profileActions.setAlignment(Pos.CENTER);
+        
+        Button editBtn = new Button("Edit Profile");
+        editBtn.getStyleClass().add("hero-button-primary");
+        editBtn.setOnAction(e -> showAlert("Edit Profile", "Edit profile functionality"));
+        
+        Button logoutBtn = new Button("Logout");
+        logoutBtn.getStyleClass().add("hero-button-secondary");
+        logoutBtn.setOnAction(e -> handleLogout());
+        
+        profileActions.getChildren().addAll(editBtn, logoutBtn);
+        
+        profileTabContent.getChildren().addAll(header, profileInfo, profileActions);
+    }
+
+    private void loadCartContent() {
+        cartTabContent.getChildren().clear();
+        
+        Label header = new Label("Shopping Cart");
+        header.getStyleClass().add("section-title");
+        
+        Label emptyMessage = new Label("Your cart is currently empty");
+        emptyMessage.getStyleClass().add("section-subtitle");
+        
+        Button shopBtn = new Button("Start Shopping");
+        shopBtn.getStyleClass().add("hero-button-primary");
+        shopBtn.setOnAction(e -> handleProducts());
+        
+        cartTabContent.getChildren().addAll(header, emptyMessage, shopBtn);
     }
 }

@@ -131,28 +131,104 @@ public class DoctorDashboardController implements Initializable {
     
     private int calculateTodayPatients(Database.Database db, LocalDate date) {
         if (doctorName != null) {
-            return db.getTodayPatientsCount(doctorName, date);
+            try {
+                // Get doctor by name first
+                Model.Dokter doctor = db.getDokterByNama(doctorName);
+                if (doctor != null) {
+                    // Get appointments for this doctor today
+                    java.util.List<Model.JadwalPemeriksaan> todayAppointments = 
+                        db.getJadwalPemeriksaanByDokterId(doctor.getId());
+                    
+                    // Filter for today's date
+                    long todayCount = todayAppointments.stream()
+                        .filter(appointment -> {
+                            LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                            return appointmentDate.equals(date);
+                        })
+                        .count();
+                    
+                    return (int) todayCount;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         return 0;
     }
     
     private int calculatePendingAppointments(Database.Database db, LocalDate date) {
         if (doctorName != null) {
-            return db.getPendingAppointmentsCount(doctorName, date);
+            try {
+                Model.Dokter doctor = db.getDokterByNama(doctorName);
+                if (doctor != null) {
+                    java.util.List<Model.JadwalPemeriksaan> appointments = 
+                        db.getJadwalPemeriksaanByDokterId(doctor.getId());
+                    
+                    // Filter for today's date and future appointments (assuming pending means upcoming)
+                    long pendingCount = appointments.stream()
+                        .filter(appointment -> {
+                            LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                            return !appointmentDate.isBefore(date);
+                        })
+                        .count();
+                    
+                    return (int) pendingCount;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         return 0;
     }
     
     private int calculateCompletedToday(Database.Database db, LocalDate date) {
         if (doctorName != null) {
-            return db.getCompletedAppointmentsCount(doctorName, date);
+            try {
+                Model.Dokter doctor = db.getDokterByNama(doctorName);
+                if (doctor != null) {
+                    java.util.List<Model.JadwalPemeriksaan> appointments = 
+                        db.getJadwalPemeriksaanByDokterId(doctor.getId());
+                    
+                    // Filter for past appointments today (assuming completed means past appointments)
+                    long completedCount = appointments.stream()
+                        .filter(appointment -> {
+                            LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                            return appointmentDate.equals(date) && 
+                                   appointment.getTanggalWaktu().before(new java.util.Date());
+                        })
+                        .count();
+                    
+                    return (int) completedCount;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         return 0;
     }
     
     private int calculateTotalPatients(Database.Database db) {
         if (doctorName != null) {
-            return db.getTotalPatientsCount(doctorName);
+            try {
+                Model.Dokter doctor = db.getDokterByNama(doctorName);
+                if (doctor != null) {
+                    java.util.List<Model.JadwalPemeriksaan> appointments = 
+                        db.getJadwalPemeriksaanByDokterId(doctor.getId());
+                    
+                    // Get unique patient count
+                    long uniquePatients = appointments.stream()
+                        .mapToInt(Model.JadwalPemeriksaan::getIdPasien)
+                        .distinct()
+                        .count();
+                    
+                    return (int) uniquePatients;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         return 0;
     }
@@ -160,14 +236,55 @@ public class DoctorDashboardController implements Initializable {
     private void loadTodayAppointments(Database.Database db, LocalDate date) {
         try {
             if (doctorName != null) {
-                List<Map<String, Object>> appointments = db.getTodayAppointments(doctorName, date);
-                
-                // Clear existing appointment cards and reload
-                loadAppointmentCards();
+                Model.Dokter doctor = db.getDokterByNama(doctorName);
+                if (doctor != null) {
+                    java.util.List<Model.JadwalPemeriksaan> appointments = 
+                        db.getJadwalPemeriksaanByDokterId(doctor.getId());
+                    
+                    // Filter for today's appointments
+                    java.util.List<Model.JadwalPemeriksaan> todayAppointments = appointments.stream()
+                        .filter(appointment -> {
+                            LocalDate appointmentDate = appointment.getTanggalWaktu().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                            return appointmentDate.equals(date);
+                        })
+                        .collect(java.util.stream.Collectors.toList());
+                    
+                    // Load appointment cards with real data
+                    loadRealAppointmentCards(todayAppointments, db);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            loadAppointmentCards();
+            loadAppointmentCards(); // Fallback to dummy data
+        }
+    }
+    
+    private void loadRealAppointmentCards(java.util.List<Model.JadwalPemeriksaan> appointments, Database.Database db) {
+        appointmentsContainer.getChildren().clear();
+        
+        if (appointments.isEmpty()) {
+            Label noAppointmentsLabel = new Label("No appointments scheduled for today");
+            noAppointmentsLabel.getStyleClass().add("card-description");
+            appointmentsContainer.getChildren().add(noAppointmentsLabel);
+            return;
+        }
+        
+        for (Model.JadwalPemeriksaan appointment : appointments) {
+            try {
+                // Get patient information
+                Model.Pelanggan patient = db.getPelangganById(appointment.getIdPasien());
+                if (patient != null) {
+                    VBox appointmentCard = createPatientCard(
+                        patient.getNama(),
+                        patient.getEmail(),
+                        "Scheduled Appointment" // You can enhance this based on appointment type
+                    );
+                    appointmentsContainer.getChildren().add(appointmentCard);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
     

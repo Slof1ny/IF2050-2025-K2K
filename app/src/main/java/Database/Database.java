@@ -600,6 +600,25 @@ public class Database {
         return null;
     }
 
+    public Dokter getDokterByNama(String nama) {
+        String selectSQL = "SELECT * FROM dokter WHERE nama = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setString(1, nama);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new Dokter(
+                    rs.getString("nama"),
+                    rs.getString("spesialisasi"),
+                    rs.getInt("id"),
+                    rs.getString("password")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting dokter by nama: " + e.getMessage());
+        }
+        return null;
+    }
+
     public boolean updateDokter(Dokter dokter) {
         String updateSQL = "UPDATE dokter SET nama = ?, spesialisasi = ?, password = ? WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
