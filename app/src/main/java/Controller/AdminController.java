@@ -44,14 +44,14 @@ public class AdminController {
     private TableColumn<Produk, Double> hargaCol;
     @FXML
     private TableColumn<Produk, Integer> stokCol;
-    @FXML
-    private TableColumn<Produk, String> categoryCol;
     
     // Doctor Table Components
     @FXML
     private TableView<Dokter> doctorTable;
     @FXML
-    private TableColumn<Dokter, String> doctorNameCol, doctorSpecCol, doctorEmailCol;    // Buttons
+    private TableColumn<Dokter, String> doctorNameCol;
+    @FXML
+    private TableColumn<Dokter, String> doctorSpecCol;    // Buttons
     @FXML
     private Button addProductButton, editProductButton, deleteProductButton;
     @FXML
@@ -139,7 +139,6 @@ public class AdminController {
         namaCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getNama()));
         hargaCol.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getHarga()));
         stokCol.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getStok()));
-        categoryCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty("General")); // Default category since no category field
         // Doctor table columns
         doctorNameCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getNama()));
         doctorSpecCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getSpesialisasi()));

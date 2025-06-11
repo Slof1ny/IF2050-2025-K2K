@@ -22,8 +22,6 @@
                 </HBox>
                 <Region HBox.hgrow="ALWAYS" />                <HBox alignment="CENTER" spacing="15.0">
                     <children>
-                        <Button text="Admin Panel" styleClass="admin-nav-button" />
-                        <Button text="Settings" styleClass="admin-nav-button" />
                         <Button text="Logout" fx:id="logoutButton" styleClass="admin-nav-button-secondary" />
                     </children>
                 </HBox>
@@ -148,12 +146,11 @@
                                         </children>
                                     </HBox>
                                     
-                                    <TableView fx:id="stokTable" prefHeight="300" styleClass="admin-table">
+                                    <TableView fx:id="stokTable" prefHeight="300" styleClass="admin-table static-table">
                                         <columns>
-                                            <TableColumn fx:id="namaCol" text="Product Name" prefWidth="300" styleClass="admin-table-column" />
-                                            <TableColumn fx:id="hargaCol" text="Price" prefWidth="200" styleClass="admin-table-column" />
-                                            <TableColumn fx:id="stokCol" text="Stock" prefWidth="150" styleClass="admin-table-column" />
-                                            <TableColumn fx:id="categoryCol" text="Category" prefWidth="200" styleClass="admin-table-column" />
+                                            <TableColumn fx:id="namaCol" text="Product Name" prefWidth="300" styleClass="admin-table-column static-header" sortable="false" />
+                                            <TableColumn fx:id="hargaCol" text="Price" prefWidth="200" styleClass="admin-table-column static-header" sortable="false" />
+                                            <TableColumn fx:id="stokCol" text="Stock" prefWidth="150" styleClass="admin-table-column static-header" sortable="false" />
                                         </columns>
                                     </TableView>
                                 </children>
@@ -195,11 +192,10 @@
                                             <VBox spacing="15.0" prefWidth="500" styleClass="admin-form-section">
                                                 <children>
                                                     <Label text="Existing Doctors" styleClass="admin-form-title" />
-                                                    <TableView fx:id="doctorTable" prefHeight="250" styleClass="admin-table">
+                                                    <TableView fx:id="doctorTable" prefHeight="250" styleClass="admin-table static-table">
                                                         <columns>
-                                                            <TableColumn fx:id="doctorNameCol" text="Name" prefWidth="150" styleClass="admin-table-column" />
-                                                            <TableColumn fx:id="doctorSpecCol" text="Specialization" prefWidth="150" styleClass="admin-table-column" />
-                                                            <TableColumn fx:id="doctorEmailCol" text="Email" prefWidth="200" styleClass="admin-table-column" />
+                                                            <TableColumn fx:id="doctorNameCol" text="Name" prefWidth="200" styleClass="admin-table-column static-header" sortable="false" />
+                                                            <TableColumn fx:id="doctorSpecCol" text="Specialization" prefWidth="200" styleClass="admin-table-column static-header" sortable="false" />
                                                         </columns>
                                                     </TableView>
                                                 </children>
