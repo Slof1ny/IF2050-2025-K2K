@@ -4,9 +4,8 @@ public class Produk {
     private String nama;
     private Double harga;
     private int stok;
-    
-    public Produk(Integer id, String nama, Double harga, int stok) {
-        this.id = id;
+      public Produk(Integer id, String nama, Double harga, int stok) {
+        this.id = (id != null) ? id.intValue() : 0;
         this.nama = nama;
         this.harga = harga;
         this.stok = stok;

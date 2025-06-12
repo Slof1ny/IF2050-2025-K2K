@@ -21,15 +21,31 @@ public class Database {
     private static final String URL = "jdbc:sqlite:user.db";
     
     private Connection connection;
-    
-    // Constructor untuk inisialisasi koneksi database
+      // Constructor untuk inisialisasi koneksi database
     public Database() {
         try {
             Class.forName("org.sqlite.JDBC");
+            System.out.println("DEBUG - Database working directory: " + System.getProperty("user.dir"));
+            System.out.println("DEBUG - Database URL: " + URL);
+            
             connection = DriverManager.getConnection(URL);
+            System.out.println("DEBUG - Database connection established successfully");
+            
+            // Test if connection is working
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM produk")) {
+                if (rs.next()) {
+                    int count = rs.getInt(1);
+                    System.out.println("DEBUG - Current produk count in database: " + count);
+                }
+            } catch (SQLException e) {
+                System.err.println("DEBUG - Error testing database connection: " + e.getMessage());
+            }
+            
             createTableIfNotExists();
         } catch (ClassNotFoundException | SQLException e) {
             System.err.println("Error initializing database: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -553,30 +569,40 @@ public class Database {
             System.err.println("Error joining resep and pelanggan: " + e.getMessage());
         }
         return resepInfoList;
-    }
-
-    // ==================== DOKTER CRUD OPERATIONS ====================
+    }    // ==================== DOKTER CRUD OPERATIONS ====================
     public boolean addDokter(Dokter dokter) {
         String insertSQL = "INSERT INTO dokter (nama, spesialisasi, password) VALUES (?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            System.out.println("Adding doctor: " + dokter.getNama() + " with specialization: " + dokter.getSpesialisasi());
+            
             stmt.setString(1, dokter.getNama());
             stmt.setString(2, dokter.getSpesialisasi());
             stmt.setString(3, dokter.getPassword());
+            
             int rowsAffected = stmt.executeUpdate();
+            System.out.println("Rows affected: " + rowsAffected);
+            
             if (rowsAffected > 0) {
+                // Get the last inserted ID
                 String getLastIdSQL = "SELECT last_insert_rowid()";
                 try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
                      ResultSet rs = lastIdStmt.executeQuery()) {
                     if (rs.next()) {
-                        dokter.setId(rs.getInt(1));
+                        int newId = rs.getInt(1);
+                        dokter.setId(newId);
+                        System.out.println("Doctor added successfully with ID: " + newId);
                     }
                 }
                 return true;
+            } else {
+                System.err.println("No rows were affected when adding doctor");
+                return false;
             }
         } catch (SQLException e) {
             System.err.println("Error adding dokter: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     public List<Dokter> getAllDokter() {
@@ -1476,17 +1502,25 @@ public class Database {
     }
     
     // =================== PRODUK CRUD METHODS ===================
-    
-    // Method untuk menambah produk baru
+      // Method untuk menambah produk baru
     public boolean addProduk(Produk produk) {
         String insertSQL = "INSERT INTO produk (nama, harga, stok) VALUES (?, ?, ?)";
+        
+        System.out.println("DEBUG Database.addProduk - Input:");
+        System.out.println("- Nama: '" + produk.getNama() + "'");
+        System.out.println("- Harga: " + produk.getHarga());
+        System.out.println("- Stok: " + produk.getStok());
         
         try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
             stmt.setString(1, produk.getNama());
             stmt.setDouble(2, produk.getHarga());
             stmt.setInt(3, produk.getStok());
             
+            System.out.println("DEBUG - Executing SQL: " + insertSQL);
+            System.out.println("DEBUG - Parameters: ['" + produk.getNama() + "', " + produk.getHarga() + ", " + produk.getStok() + "]");
+            
             int rowsAffected = stmt.executeUpdate();
+            System.out.println("DEBUG - Rows affected: " + rowsAffected);
             
             if (rowsAffected > 0) {
                 // Get the last inserted ID
@@ -1494,13 +1528,19 @@ public class Database {
                 try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
                      ResultSet rs = lastIdStmt.executeQuery()) {
                     if (rs.next()) {
-                        produk.setId(rs.getInt(1));
+                        int insertedId = rs.getInt(1);
+                        System.out.println("DEBUG - Inserted ID: " + insertedId);
+                        produk.setId(insertedId);
                     }
                 }
+                System.out.println("DEBUG - Product successfully added to database");
                 return true;
+            } else {
+                System.err.println("DEBUG - No rows were affected by insert");
             }
         } catch (SQLException e) {
             System.err.println("Error adding produk: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -1891,7 +1931,7 @@ public class Database {
         } catch (SQLException e) {
             System.err.println("Error adding ketersediaan dokter: " + e.getMessage());
         }
-        return false;
+ return false;
     }
     
     // Method untuk mengambil ketersediaan dokter berdasarkan ID dokter dan tanggal
@@ -2225,289 +2265,6 @@ public class Database {
         } catch (SQLException e) {
             System.err.println("Error resetting password: " + e.getMessage());
         }
-        return false;
-    }
-
-    // Method untuk mengambil informasi lengkap pesanan dengan detail dan produk
-    public List<Map<String, Object>> getPesananLengkap(int idPesanan) {
-        List<Map<String, Object>> detailList = new ArrayList<>();
-        String selectSQL = """
-            SELECT dp.id_detail, dp.id_pesanan, dp.id_produk, dp.kuantitas, dp.total_harga,
-                   p.nama as nama_produk, p.harga as harga_produk, p.stok as stok_produk
-            FROM detail_pesanan dp
-            JOIN produk p ON dp.id_produk = p.id
-            WHERE dp.id_pesanan = ?
-        """;
-        
-        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
-            stmt.setInt(1, idPesanan);
-            ResultSet rs = stmt.executeQuery();
-            
-            while (rs.next()) {
-                Map<String, Object> detailMap = new HashMap<>();
-                detailMap.put("id_detail", rs.getInt("id_detail"));
-                detailMap.put("id_pesanan", rs.getInt("id_pesanan"));
-                detailMap.put("id_produk", rs.getInt("id_produk"));
-                detailMap.put("kuantitas", rs.getInt("kuantitas"));
-                detailMap.put("total_harga", rs.getDouble("total_harga"));
-                detailMap.put("nama_produk", rs.getString("nama_produk"));
-                detailMap.put("harga_produk", rs.getDouble("harga_produk"));
-                detailMap.put("stok_produk", rs.getInt("stok_produk"));
-                
-                detailList.add(detailMap);
-            }
-        } catch (SQLException e) {
-            System.err.println("Error getting pesanan lengkap: " + e.getMessage());
-        }
-        
-        return detailList;
-    }
-    
-    // =================== DOCTOR CALENDAR SPECIFIC METHODS ===================
-    
-    // Method untuk mengambil slot waktu yang tersedia untuk dokter tertentu pada tanggal tertentu
-    public List<Map<String, Object>> getAvailableTimeSlotsForDoctor(int idDokter, java.sql.Date tanggal) {
-        List<Map<String, Object>> availableSlots = new ArrayList<>();
-        
-        // Generate default time slots (9:00 AM to 5:00 PM, 1-hour slots)
-        String[] defaultTimeSlots = {
-            "09:00:00", "10:00:00", "11:00:00", "12:00:00", 
-            "13:00:00", "14:00:00", "15:00:00", "16:00:00", "17:00:00"
-        };
-        
-        // Get unavailable times for this doctor on this date
-        String selectUnavailableSQL = """
-            SELECT jam_mulai, jam_selesai FROM ketersediaan_dokter 
-            WHERE id_dokter = ? AND tanggal = ? AND status = 'tidak_tersedia'
-        """;
-        
-        // Get booked appointments for this doctor on this date
-        String selectBookedSQL = """
-            SELECT TIME(tanggal_waktu) as jam_booking FROM jadwal_pemeriksaan 
-            WHERE id_dokter = ? AND DATE(tanggal_waktu) = ? AND id_pasien IS NOT NULL
-        """;
-        
-        List<String> unavailableTimes = new ArrayList<>();
-        List<String> bookedTimes = new ArrayList<>();
-        
-        try (PreparedStatement stmtUnavailable = connection.prepareStatement(selectUnavailableSQL)) {
-            stmtUnavailable.setInt(1, idDokter);
-            stmtUnavailable.setDate(2, tanggal);
-            ResultSet rsUnavailable = stmtUnavailable.executeQuery();
-            
-            while (rsUnavailable.next()) {
-                java.sql.Time jamMulai = rsUnavailable.getTime("jam_mulai");
-                java.sql.Time jamSelesai = rsUnavailable.getTime("jam_selesai");
-                
-                // Add all hours between start and end time as unavailable
-                for (String slot : defaultTimeSlots) {
-                    java.sql.Time slotTime = java.sql.Time.valueOf(slot);
-                    if (!slotTime.before(jamMulai) && slotTime.before(jamSelesai)) {
-                        unavailableTimes.add(slot.substring(0, 5)); // HH:mm format
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error getting unavailable times: " + e.getMessage());
-        }
-        
-        try (PreparedStatement stmtBooked = connection.prepareStatement(selectBookedSQL)) {
-            stmtBooked.setInt(1, idDokter);
-            stmtBooked.setDate(2, tanggal);
-            ResultSet rsBooked = stmtBooked.executeQuery();
-            
-            while (rsBooked.next()) {
-                String jamBooking = rsBooked.getString("jam_booking");
-                if (jamBooking != null) {
-                    bookedTimes.add(jamBooking.substring(0, 5)); // HH:mm format
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error getting booked times: " + e.getMessage());
-        }
-        
-        // Create available slots list
-        for (String timeSlot : defaultTimeSlots) {
-            String timeSlotFormatted = timeSlot.substring(0, 5); // HH:mm format
-            boolean isAvailable = !unavailableTimes.contains(timeSlotFormatted) && 
-                                !bookedTimes.contains(timeSlotFormatted);
-            
-            Map<String, Object> slot = new HashMap<>();
-            slot.put("time", timeSlotFormatted);
-            slot.put("available", isAvailable);
-            slot.put("doctor_id", idDokter);
-            slot.put("date", tanggal);
-            
-            if (!isAvailable) {
-                if (unavailableTimes.contains(timeSlotFormatted)) {
-                    slot.put("reason", "Doctor not available");
-                } else {
-                    slot.put("reason", "Already booked");
-                }
-            }
-            
-            availableSlots.add(slot);
-        }
-        
-        return availableSlots;
-    }
-    
-    // Method untuk mengambil kalender dokter untuk rentang tanggal tertentu
-    public Map<String, Object> getDoctorCalendar(int idDokter, java.sql.Date startDate, java.sql.Date endDate) {
-        Map<String, Object> calendar = new HashMap<>();
-        calendar.put("doctor_id", idDokter);
-        calendar.put("start_date", startDate);
-        calendar.put("end_date", endDate);
-        
-        // Get doctor information
-        Dokter dokter = getDokterById(idDokter);
-        calendar.put("doctor_name", dokter != null ? dokter.getNama() : "Unknown Doctor");
-        calendar.put("doctor_specialization", dokter != null ? dokter.getSpesialisasi() : "Unknown");
-        
-        Map<String, List<Map<String, Object>>> dateSlots = new HashMap<>();
-        
-        // Iterate through each date in the range
-        long currentTime = startDate.getTime();
-        long endTime = endDate.getTime();
-        long oneDay = 24 * 60 * 60 * 1000; // milliseconds in a day
-        
-        while (currentTime <= endTime) {
-            java.sql.Date currentDate = new java.sql.Date(currentTime);
-            String dateString = currentDate.toString();
-            
-            List<Map<String, Object>> slotsForDate = getAvailableTimeSlotsForDoctor(idDokter, currentDate);
-            dateSlots.put(dateString, slotsForDate);
-            
-            currentTime += oneDay;
-        }
-        
-        calendar.put("date_slots", dateSlots);
-        return calendar;
-    }
-    
-    // Method untuk mengambil ringkasan kalender semua dokter
-    public List<Map<String, Object>> getAllDoctorsCalendarSummary(java.sql.Date date) {
-        List<Map<String, Object>> doctorsSummary = new ArrayList<>();
-        
-        List<Dokter> allDokters = getAllDokter();
-        
-        for (Dokter dokter : allDokters) {
-            Map<String, Object> summary = new HashMap<>();
-            summary.put("doctor_id", dokter.getId());
-            summary.put("doctor_name", dokter.getNama());
-            summary.put("doctor_specialization", dokter.getSpesialisasi());
-            
-            List<Map<String, Object>> slots = getAvailableTimeSlotsForDoctor(dokter.getId(), date);
-            long availableCount = slots.stream()
-                .mapToLong(slot -> (Boolean) slot.get("available") ? 1 : 0)
-                .sum();
-            
-            summary.put("total_slots", slots.size());
-            summary.put("available_slots", availableCount);
-            summary.put("booked_slots", slots.size() - availableCount);
-            summary.put("availability_percentage", 
-                slots.size() > 0 ? (availableCount * 100.0 / slots.size()) : 0);
-            
-            doctorsSummary.add(summary);
-        }
-        
-        return doctorsSummary;
-    }
-    
-    // Method untuk booking appointment dengan validasi dokter dan waktu
-    public boolean bookAppointmentWithDoctor(int idDokter, java.sql.Date tanggal, String waktu, int idPasien) {
-        // First check if the slot is available
-        List<Map<String, Object>> availableSlots = getAvailableTimeSlotsForDoctor(idDokter, tanggal);
-        
-        boolean slotAvailable = false;
-        for (Map<String, Object> slot : availableSlots) {
-            if (slot.get("time").equals(waktu) && (Boolean) slot.get("available")) {
-                slotAvailable = true;
-                break;
-            }
-        }
-        
-        if (!slotAvailable) {
-            System.err.println("Selected time slot is not available for this doctor");
-            return false;
-        }
-        
-        // Create the appointment datetime
-        try {
-            String dateTimeString = tanggal.toString() + " " + waktu + ":00";
-            java.sql.Timestamp appointmentDateTime = java.sql.Timestamp.valueOf(dateTimeString);
-            
-            JadwalPemeriksaan jadwal = new JadwalPemeriksaan(0, appointmentDateTime, idPasien, idDokter);
-            return addJadwalPemeriksaan(jadwal);
-            
-        } catch (Exception e) {
-            System.err.println("Error creating appointment: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    // Method untuk mengambil appointment pasien dengan informasi dokter
-    public List<Map<String, Object>> getPatientAppointmentsWithDoctorInfo(int idPasien) {
-        List<Map<String, Object>> appointments = new ArrayList<>();
-        String selectSQL = """
-            SELECT j.id_jadwal, j.tanggal_waktu, j.id_pasien, j.id_dokter,
-                   d.nama as doctor_name, d.spesialisasi as doctor_specialization
-            FROM jadwal_pemeriksaan j
-            JOIN dokter d ON j.id_dokter = d.id
-            WHERE j.id_pasien = ?
-            ORDER BY j.tanggal_waktu DESC
-        """;
-        
-        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
-            stmt.setInt(1, idPasien);
-            ResultSet rs = stmt.executeQuery();
-            
-            while (rs.next()) {
-                Map<String, Object> appointment = new HashMap<>();
-                appointment.put("id_jadwal", rs.getInt("id_jadwal"));
-                appointment.put("tanggal_waktu", rs.getTimestamp("tanggal_waktu"));
-                appointment.put("id_pasien", rs.getInt("id_pasien"));
-                appointment.put("id_dokter", rs.getInt("id_dokter"));
-                appointment.put("doctor_name", rs.getString("doctor_name"));
-                appointment.put("doctor_specialization", rs.getString("doctor_specialization"));
-                
-                // Format date and time separately
-                java.sql.Timestamp timestamp = rs.getTimestamp("tanggal_waktu");
-                appointment.put("appointment_date", new java.sql.Date(timestamp.getTime()).toString());
-                appointment.put("appointment_time", new java.sql.Time(timestamp.getTime()).toString().substring(0, 5));
-                
-                appointments.add(appointment);
-            }
-        } catch (SQLException e) {
-            System.err.println("Error getting patient appointments: " + e.getMessage());
-        }
-        
-        return appointments;
-    }
-    
-    // Method untuk cancel appointment
-    public boolean cancelAppointment(int idJadwal, int idPasien) {
-        // Verify the appointment belongs to the patient
-        String verifySQL = "SELECT id_pasien FROM jadwal_pemeriksaan WHERE id_jadwal = ?";
-        String deleteSQL = "DELETE FROM jadwal_pemeriksaan WHERE id_jadwal = ? AND id_pasien = ?";
-        
-        try (PreparedStatement verifyStmt = connection.prepareStatement(verifySQL)) {
-            verifyStmt.setInt(1, idJadwal);
-            ResultSet rs = verifyStmt.executeQuery();
-            
-            if (rs.next() && rs.getInt("id_pasien") == idPasien) {
-                try (PreparedStatement deleteStmt = connection.prepareStatement(deleteSQL)) {
-                    deleteStmt.setInt(1, idJadwal);
-                    deleteStmt.setInt(2, idPasien);
-                    
-                    int rowsAffected = deleteStmt.executeUpdate();
-                    return rowsAffected > 0;
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error canceling appointment: " + e.getMessage());
-        }
-        
         return false;
     }
 }

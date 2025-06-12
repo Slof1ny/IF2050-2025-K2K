@@ -100,22 +100,7 @@ public class LoginController {
                             setText(null);
                             setGraphic(null);
                         } else {
-                            // Buat HBox untuk menampung ikon dan teks
-                            HBox hbox = new HBox(10); 
-                            hbox.setAlignment(Pos.CENTER_LEFT);
-
-                            SVGPath icon = new SVGPath();
-                            icon.setContent(item.getSvgIconPath());
-                            icon.setFill(Color.web("#546e7a")); // Warna ikon
-                            icon.setFill(Color.web("#546e7a"));
-                            
-                            StackPane iconContainer = new StackPane(icon);
-                            iconContainer.setPrefSize(18, 18);
-
-                            Label label = new Label(item.getName());
-                            
-                            hbox.getChildren().addAll(iconContainer, label);
-                            setGraphic(hbox);
+                            setGraphic(createRoleItemGraphic(item));
                         }
                     }
                 };
@@ -132,23 +117,27 @@ public class LoginController {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    HBox hbox = new HBox(10);
-                    hbox.setAlignment(Pos.CENTER_LEFT);
-
-                    SVGPath icon = new SVGPath();
-                    icon.setContent(item.getSvgIconPath());
-                    icon.setFill(Color.web("#546e7a"));
-                    
-                    StackPane iconContainer = new StackPane(icon);
-                    iconContainer.setPrefSize(18, 18);
-
-                    Label label = new Label(item.getName());
-                    
-                    hbox.getChildren().addAll(iconContainer, label);
-                    setGraphic(hbox);
+                    setGraphic(createRoleItemGraphic(item));
                 }
             }
         });
+    }
+
+    private HBox createRoleItemGraphic(RoleItem item) {
+        HBox hbox = new HBox(10);
+        hbox.setAlignment(Pos.CENTER_LEFT);
+
+        SVGPath icon = new SVGPath();
+        icon.setContent(item.getSvgIconPath());
+        icon.setFill(Color.web("#546e7a"));
+        
+        StackPane iconContainer = new StackPane(icon);
+        iconContainer.setPrefSize(18, 18);
+
+        Label label = new Label(item.getName());
+        
+        hbox.getChildren().addAll(iconContainer, label);
+        return hbox;
     }
 
     @FXML
@@ -174,39 +163,13 @@ public class LoginController {
         Controller.DashboardController.setLoginInfo(role, name);
 
         // Jika berhasil, ke dashboard
-        // Navigate based on role
         try {
             Stage stage = (Stage) signInButton.getScene().getWindow();
-            
-            if (role.equals("Doctor")) {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/DoctorDashboardView.fxml"));
-                Parent root = loader.load();
-                
-                // Set doctor name if controller exists
-                try {
-                    DoctorDashboardController controller = loader.getController();
-                    if (controller != null) {
-                        controller.setDoctorName(name);
-                    }
-                } catch (Exception e) {
-                    System.out.println("Warning: Could not set doctor name - " + e.getMessage());
-                }
-                
-                Scene scene = new Scene(root, 1024, 768);
-                stage.setScene(scene);
-                stage.setTitle("Doctor Dashboard - Optik XYZ");
-                
-            } else {
-                DashboardController.setLoginInfo(role, name);
-                
-                Parent dashboardRoot = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
-                Scene dashboardScene = new Scene(dashboardRoot, 1000, 600);
-                stage.setScene(dashboardScene);
-                stage.setTitle("TemuOptic Dashboard");
-            }
-            
-            stage.centerOnScreen();
-            
+            Parent dashboardRoot = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
+            Scene dashboardScene = new Scene(dashboardRoot, 1000, 600);
+            stage.setScene(dashboardScene);
+            stage.setTitle("TemuOptic Dashboard");
+            stage.centerOnScreen(); // Posisikan jendela di tengah layar
         } catch (IOException e) {
             e.printStackTrace();
             showAlert("Error", "Gagal memuat halaman dashboard: " + e.getMessage());

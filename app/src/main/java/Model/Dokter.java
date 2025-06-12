@@ -14,6 +14,12 @@ public class Dokter {
         // Constructor for Dokter class
     }
 
+    public Dokter(String nama, String spesialisasi, String password) {
+        this.nama = nama;
+        this.spesialisasi = spesialisasi;
+        this.password = password;
+    }
+
     public String getNama() {
         return nama;
     }
