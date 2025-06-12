@@ -6,7 +6,9 @@ public class Resep {
     private int IDResep;
     private String IsiResep;
     private Date Tanggal;
-    private int idPelanggan;    public Resep(int IDResep, String IsiResep, Date Tanggal, int idPelanggan) {
+    private int idPelanggan;
+    
+    public Resep(int IDResep, String IsiResep, Date Tanggal, int idPelanggan) {
         this.IDResep = IDResep;
         this.IsiResep = IsiResep;
         this.Tanggal = Tanggal;

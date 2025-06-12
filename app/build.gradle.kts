@@ -185,6 +185,23 @@ tasks.register<JavaExec>("runOrderDemo") {
     standardInput = System.`in`
 }
 
+// Task untuk menguji sistem ketersediaan dokter
+tasks.register<JavaExec>("testDokterAvailability") {
+    group = "application"
+    description = "Test the doctor availability system"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Main.TestDokterAvailability"
+}
+
+// Task untuk demo ketersediaan dokter
+tasks.register<JavaExec>("runDokterAvailabilityDemo") {
+    group = "application"
+    description = "Run the interactive doctor availability demo"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Main.DokterAvailabilityDemo"
+    standardInput = System.`in`
+}
+
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }

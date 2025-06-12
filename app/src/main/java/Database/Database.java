@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
 
 public class Database {
     private static final String URL = "jdbc:sqlite:user.db";
@@ -177,6 +178,23 @@ public class Database {
             )
         """;
         
+        // Tabel ketersediaan_dokter untuk mengelola jadwal tersedia/tidak tersedia dokter
+        String createKetersediaanDokterTableSQL = """
+            CREATE TABLE IF NOT EXISTS ketersediaan_dokter (
+                id_ketersediaan INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_dokter INTEGER NOT NULL,
+                tanggal DATE NOT NULL,
+                jam_mulai TIME NOT NULL,
+                jam_selesai TIME NOT NULL,
+                status TEXT NOT NULL CHECK (status IN ('tersedia', 'tidak_tersedia')),
+                keterangan TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (id_dokter) REFERENCES dokter(id) ON DELETE CASCADE,
+                UNIQUE(id_dokter, tanggal, jam_mulai, jam_selesai)
+            )
+        """;
+        
         String createPelangganTriggerSQL = """
             CREATE TRIGGER IF NOT EXISTS update_pelanggan_timestamp 
             AFTER UPDATE ON pelanggan
@@ -240,6 +258,7 @@ public class Database {
             stmt.execute(createProdukTableSQL);
             stmt.execute(createPesananTableSQL);
             stmt.execute(createDetailPesananTableSQL);
+            stmt.execute(createKetersediaanDokterTableSQL);
             stmt.execute(createPelangganTriggerSQL);
             stmt.execute(createResepTriggerSQL);
             stmt.execute(createDokterTriggerSQL);
@@ -621,6 +640,25 @@ public class Database {
             }
         } catch (SQLException e) {
             System.err.println("Error getting dokter by ID: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public Dokter getDokterByNama(String nama) {
+        String selectSQL = "SELECT * FROM dokter WHERE nama = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setString(1, nama);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new Dokter(
+                    rs.getString("nama"),
+                    rs.getString("spesialisasi"),
+                    rs.getInt("id"),
+                    rs.getString("password")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting dokter by nama: " + e.getMessage());
         }
         return null;
     }
@@ -1876,50 +1914,297 @@ public class Database {
         return false;
     }
     
-    // Method untuk mengeksekusi raw SQL UPDATE, DELETE, atau INSERT
-    public boolean executeRawUpdate(String sql) {
-        try (Statement stmt = connection.createStatement()) {
-            int rowsAffected = stmt.executeUpdate(sql);
+    // Method untuk menambah ketersediaan dokter
+    public boolean addKetersediaanDokter(int idDokter, java.sql.Date tanggal, java.sql.Time jamMulai, java.sql.Time jamSelesai, String status, String keterangan) {
+        String insertSQL = "INSERT INTO ketersediaan_dokter (id_dokter, tanggal, jam_mulai, jam_selesai, status, keterangan) VALUES (?, ?, ?, ?, ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setInt(1, idDokter);
+            stmt.setDate(2, tanggal);
+            stmt.setTime(3, jamMulai);
+            stmt.setTime(4, jamSelesai);
+            stmt.setString(5, status);
+            stmt.setString(6, keterangan);
+            
+            int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
         } catch (SQLException e) {
-            System.err.println("Error executing raw SQL update: " + e.getMessage());
+            System.err.println("Error adding ketersediaan dokter: " + e.getMessage());
+        }
+ return false;
+    }
+    
+    // Method untuk mengambil ketersediaan dokter berdasarkan ID dokter dan tanggal
+    public List<Map<String, Object>> getKetersediaanDokterByIdAndDate(int idDokter, java.sql.Date tanggal) {
+        List<Map<String, Object>> ketersediaanList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM ketersediaan_dokter WHERE id_dokter = ? AND tanggal = ? ORDER BY jam_mulai";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idDokter);
+            stmt.setDate(2, tanggal);
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                Map<String, Object> ketersediaan = new HashMap<>();
+                ketersediaan.put("id_ketersediaan", rs.getInt("id_ketersediaan"));
+                ketersediaan.put("id_dokter", rs.getInt("id_dokter"));
+                ketersediaan.put("tanggal", rs.getDate("tanggal"));
+                ketersediaan.put("jam_mulai", rs.getTime("jam_mulai"));
+                ketersediaan.put("jam_selesai", rs.getTime("jam_selesai"));
+                ketersediaan.put("status", rs.getString("status"));
+                ketersediaan.put("keterangan", rs.getString("keterangan"));
+                ketersediaanList.add(ketersediaan);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting ketersediaan dokter: " + e.getMessage());
+        }
+        
+        return ketersediaanList;
+    }
+    
+    // Method untuk mengambil semua dokter yang tersedia pada tanggal dan jam tertentu
+    public List<Dokter> getDokterTersedia(java.sql.Date tanggal, java.sql.Time jamMulai, java.sql.Time jamSelesai) {
+        List<Dokter> dokterTersedia = new ArrayList<>();
+        String selectSQL = """
+            SELECT DISTINCT d.* FROM dokter d
+            WHERE d.id NOT IN (
+                SELECT kd.id_dokter FROM ketersediaan_dokter kd
+                WHERE kd.tanggal = ? AND kd.status = 'tidak_tersedia'
+                AND ((kd.jam_mulai <= ? AND kd.jam_selesai > ?) 
+                     OR (kd.jam_mulai < ? AND kd.jam_selesai >= ?))
+            )
+        """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setDate(1, tanggal);
+            stmt.setTime(2, jamMulai);
+            stmt.setTime(3, jamMulai);
+            stmt.setTime(4, jamSelesai);
+            stmt.setTime(5, jamSelesai);
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                Dokter dokter = new Dokter(
+                    rs.getString("nama"),
+                    rs.getString("spesialisasi"),
+                    rs.getInt("id"),
+                    rs.getString("password")
+                );
+                dokterTersedia.add(dokter);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting dokter tersedia: " + e.getMessage());
+        }
+        
+        return dokterTersedia;
+    }
+    
+    // Method untuk update status ketersediaan dokter
+    public boolean updateKetersediaanDokter(int idKetersediaan, String status, String keterangan) {
+        String updateSQL = "UPDATE ketersediaan_dokter SET status = ?, keterangan = ? WHERE id_ketersediaan = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setString(1, status);
+            stmt.setString(2, keterangan);
+            stmt.setInt(3, idKetersediaan);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating ketersediaan dokter: " + e.getMessage());
         }
         return false;
     }
     
-    // Method untuk mengambil informasi lengkap pesanan dengan detail dan produk
-    public List<Map<String, Object>> getPesananLengkap(int idPesanan) {
-        List<Map<String, Object>> detailList = new ArrayList<>();
-        String selectSQL = """
-            SELECT dp.id_detail, dp.id_pesanan, dp.id_produk, dp.kuantitas, dp.total_harga,
-                   p.nama as nama_produk, p.harga as harga_produk, p.stok as stok_produk
-            FROM detail_pesanan dp
-            JOIN produk p ON dp.id_produk = p.id
-            WHERE dp.id_pesanan = ?
-        """;
+    // Method untuk menghapus ketersediaan dokter
+    public boolean deleteKetersediaanDokter(int idKetersediaan) {
+        String deleteSQL = "DELETE FROM ketersediaan_dokter WHERE id_ketersediaan = ?";
         
-        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
-            stmt.setInt(1, idPesanan);
-            ResultSet rs = stmt.executeQuery();
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, idKetersediaan);
             
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting ketersediaan dokter: " + e.getMessage());
+        }
+        return false;
+    }
+
+    // Method untuk menambah pelanggan
+    public boolean addPelanggan(String nama, String email, String noHp, String password) {
+        String insertSQL = "INSERT INTO pelanggan (nama, email, no_hp, password) VALUES (?, ?, ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setString(1, nama);
+            stmt.setString(2, email);
+            stmt.setString(3, noHp);
+            stmt.setString(4, password);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error adding pelanggan: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil semua pelanggan
+    public List<Pelanggan> getAllPelangganData() {
+        List<Pelanggan> pelangganList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM pelanggan ORDER BY id";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                Map<String, Object> detailMap = new HashMap<>();
-                detailMap.put("id_detail", rs.getInt("id_detail"));
-                detailMap.put("id_pesanan", rs.getInt("id_pesanan"));
-                detailMap.put("id_produk", rs.getInt("id_produk"));
-                detailMap.put("kuantitas", rs.getInt("kuantitas"));
-                detailMap.put("total_harga", rs.getDouble("total_harga"));
-                detailMap.put("nama_produk", rs.getString("nama_produk"));
-                detailMap.put("harga_produk", rs.getDouble("harga_produk"));
-                detailMap.put("stok_produk", rs.getInt("stok_produk"));
-                
-                detailList.add(detailMap);
+                Pelanggan pelanggan = new Pelanggan(
+                    rs.getInt("id"),
+                    rs.getString("nama"),
+                    rs.getString("email"),
+                    rs.getString("no_hp"),
+                    rs.getString("password")
+                );
+                pelangganList.add(pelanggan);
             }
         } catch (SQLException e) {
-            System.err.println("Error getting pesanan lengkap: " + e.getMessage());
+            System.err.println("Error getting all pelanggan data: " + e.getMessage());
         }
+        return pelangganList;
+    }
+    
+    // Method untuk mengambil pelanggan berdasarkan ID
+    public Pelanggan getPelangganDataById(int id) {
+        String selectSQL = "SELECT * FROM pelanggan WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new Pelanggan(
+                    rs.getInt("id"),
+                    rs.getString("nama"),
+                    rs.getString("email"),
+                    rs.getString("no_hp"),
+                    rs.getString("password")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting pelanggan data by ID: " + e.getMessage());
+        }
+        return null;
+    }
+    
+    // Method untuk mengupdate data pelanggan
+    public boolean updatePelangganData(Pelanggan pelanggan) {
+        String updateSQL = "UPDATE pelanggan SET nama = ?, email = ?, no_hp = ?, password = ? WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setString(1, pelanggan.getNama());
+            stmt.setString(2, pelanggan.getEmail());
+            stmt.setString(3, pelanggan.getnoHp());
+            stmt.setString(4, pelanggan.getPassword());
+            stmt.setInt(5, pelanggan.getId());
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating pelanggan data: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus pelanggan
+    public boolean deletePelangganData(int id) {
+        String deleteSQL = "DELETE FROM pelanggan WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, id);
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting pelanggan data: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menambah resep
+    public boolean addResepData(String isiResep, int idPelanggan) {
+        String insertSQL = "INSERT INTO resep (isi_resep, id_pelanggan) VALUES (?, ?)";
         
-        return detailList;
+        try (PreparedStatement stmt = connection.prepareStatement(insertSQL)) {
+            stmt.setString(1, isiResep);
+            stmt.setInt(2, idPelanggan);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error adding resep data: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk mengambil semua resep
+    public List<Resep> getAllResepData() {
+        List<Resep> resepList = new ArrayList<>();
+        String selectSQL = "SELECT * FROM resep ORDER BY id_resep";
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                Resep resep = new Resep(
+                    rs.getInt("id_resep"),
+                    rs.getString("isi_resep"),
+                    rs.getTimestamp("tanggal"),
+                    rs.getInt("id_pelanggan")
+                );
+                resepList.add(resep);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting all resep data: " + e.getMessage());
+        }
+        return resepList;
+    }
+    // Method untuk mengambil resep berdasarkan ID
+    public Resep getResepDataById(int idResep) {
+        String selectSQL = "SELECT * FROM resep WHERE id_resep = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setInt(1, idResep);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new Resep(
+                    rs.getInt("id_resep"),
+                    rs.getString("isi_resep"),
+                    rs.getTimestamp("tanggal"),
+                    rs.getInt("id_pelanggan")
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting resep data by ID: " + e.getMessage());
+        }
+        return null;
+    }
+    
+    // Method untuk mengupdate resep
+    public boolean updateResepData(Resep resep) {
+        String updateSQL = "UPDATE resep SET isi_resep = ?, id_pelanggan = ? WHERE id_resep = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(updateSQL)) {
+            stmt.setString(1, resep.getIsiResep());
+            stmt.setInt(2, resep.getIdPelanggan());
+            stmt.setInt(3, resep.getIDResep());
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error updating resep data: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    // Method untuk menghapus resep
+    public boolean deleteResepData(int idResep) {
+        String deleteSQL = "DELETE FROM resep WHERE id_resep = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(deleteSQL)) {
+            stmt.setInt(1, idResep);
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error deleting resep data: " + e.getMessage());
+        }
+        return false;
     }
     
     // === AUTHENTICATION METHODS ===
@@ -1981,50 +2266,5 @@ public class Database {
             System.err.println("Error resetting password: " + e.getMessage());
         }
         return false;
-    }
-    
-    // Method untuk menghitung total order dengan status 'Selesai'
-    public int getTotalOrderSelesai() {
-        String sql = "SELECT COUNT(DISTINCT p.id_pesanan) as total FROM pesanan p WHERE p.status = 'Selesai'";
-        try (PreparedStatement stmt = connection.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                return rs.getInt("total");
-            }
-        } catch (SQLException e) {
-            System.err.println("Error counting total order selesai: " + e.getMessage());
-        }
-        return 0;
-    }
-
-    // Method untuk menghitung total revenue dari pesanan yang statusnya 'Selesai'
-    public double getTotalRevenueSelesai() {
-        String sql = "SELECT SUM(dp.kuantitas * pr.harga) as revenue FROM pesanan p " +
-                "JOIN detail_pesanan dp ON p.id_pesanan = dp.id_pesanan " +
-                "JOIN produk pr ON dp.id_produk = pr.id " +
-                "WHERE p.status = 'Selesai'";
-        try (PreparedStatement stmt = connection.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                return rs.getDouble("revenue");
-            }
-        } catch (SQLException e) {
-            System.err.println("Error counting total revenue selesai: " + e.getMessage());
-        }
-        return 0.0;
-    }
-
-    // Method untuk mendapatkan ID produk terakhir yang baru saja diinsert
-    public Integer getLastProdukId() {
-        String sql = "SELECT MAX(id) FROM produk";
-        try (PreparedStatement stmt = connection.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            System.err.println("Error getting last produk id: " + e.getMessage());
-        }
-        return null;
     }
 }

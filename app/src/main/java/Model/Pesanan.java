@@ -21,7 +21,9 @@ public class Pesanan {
         this.status = status;
         this.tanggal = tanggal;
         this.idPelanggan = idPelanggan;
-    }    public int getIdPesanan() {
+    }
+    
+    public int getIdPesanan() {
         return idPesanan;
     }
     public void setIdPesanan(int idPesanan) {
