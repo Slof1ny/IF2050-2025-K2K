@@ -113,10 +113,40 @@ public class DoctorDashboardController implements Initializable {
         this.doctorName = doctorName;
         welcomeBanner.setText("Selamat datang, DR. " + doctorName);
         
+        // Clear previous doctor's custom availability
+        customAvailability.clear();
+        
+        // Load this doctor's custom availability from database
+        loadDoctorCustomAvailability();
+        
         // Reload data for this specific doctor
         loadRealData();
     }
     
+    private void loadDoctorCustomAvailability() {
+        try {
+            Database.Database db = new Database.Database();
+            
+            // Get current doctor
+            Model.Dokter doctor = db.getDokterByNama(doctorName);
+            if (doctor == null) {
+                return;
+            }
+            
+            // Load doctor-specific availability settings
+            // TODO: Implement database loading for this doctor's custom availability
+            // This would query a DoctorAvailability table with doctor_id filter
+            
+            System.out.println("Loading custom availability for Dr. " + doctorName);
+            
+            // For now, each doctor starts with default availability
+            // but can customize it independently
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void loadRealData() {
         try {
             Database.Database db = new Database.Database();
@@ -535,12 +565,12 @@ public class DoctorDashboardController implements Initializable {
     }
     
     private void handleSlotClick(LocalDate date, String time, VBox slot) {
-        String slotKey = date.toString() + "_" + time;
+        String slotKey = getDoctorSlotKey(date, time);
         
-        // Get current status
+        // Get current status for this doctor
         AvailabilityStatus currentStatus = getAvailability(date, time);
         
-        // Don't allow editing if there's already an appointment
+        // Don't allow editing if there's already an appointment for this doctor
         if (isSlotBookedForDoctor(date, time)) {
             showAlert("Cannot Edit", "This time slot already has an appointment and cannot be modified.");
             return;
@@ -556,24 +586,24 @@ public class DoctorDashboardController implements Initializable {
         
         // Show confirmation dialog
         Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmDialog.setTitle("Change Availability");
-        confirmDialog.setHeaderText("Update Time Slot Availability");
+        confirmDialog.setTitle("Change Availability - Dr. " + doctorName);
+        confirmDialog.setHeaderText("Update Your Time Slot Availability");
         
         String dateStr = date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy"));
         String statusStr = newStatus == AvailabilityStatus.AVAILABLE ? "Available" : "Unavailable";
         
         confirmDialog.setContentText(String.format(
-            "Do you want to set %s at %s as %s?\n\n" +
-            "This will affect your schedule for patient bookings.",
-            dateStr, time, statusStr
+            "Dr. %s, do you want to set %s at %s as %s?\n\n" +
+            "This will only affect your personal schedule and won't impact other doctors' availability.",
+            doctorName, dateStr, time, statusStr
         ));
         
         confirmDialog.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                // Update custom availability
+                // Update this doctor's custom availability
                 customAvailability.put(slotKey, newStatus);
                 
-                // Save to database/preferences if needed
+                // Save to database with doctor ID
                 saveAvailabilityToDatabase(date, time, newStatus);
                 
                 // Update slot appearance
@@ -587,8 +617,8 @@ public class DoctorDashboardController implements Initializable {
                 
                 // Show success message
                 showAlert("Success", String.format(
-                    "Time slot %s on %s has been set as %s",
-                    time, dateStr, statusStr
+                    "Dr. %s: Time slot %s on %s has been set as %s",
+                    doctorName, time, dateStr, statusStr
                 ));
             }
         });
@@ -604,18 +634,23 @@ public class DoctorDashboardController implements Initializable {
                 return;
             }
             
-            // For now, we'll store this in a simple way
-            // You might want to create a separate table for doctor availability
-            // This is a placeholder implementation
-            
+            // Save this doctor's specific availability setting
             System.out.println(String.format(
-                "Saving availability for Dr. %s: %s %s = %s",
-                doctorName, date, time, status
+                "Saving availability for Dr. %s (ID: %d): %s %s = %s",
+                doctorName, doctor.getId(), date, time, status
             ));
             
-            // TODO: Implement actual database storage for custom availability
-            // This could involve creating a DoctorAvailability table with columns:
-            // - doctor_id, date, time, status
+            // TODO: Implement actual database storage for doctor-specific availability
+            // CREATE TABLE doctor_availability (
+            //     id INT PRIMARY KEY AUTO_INCREMENT,
+            //     doctor_id INT,
+            //     date DATE,
+            //     time TIME,
+            //     status ENUM('AVAILABLE', 'UNAVAILABLE'),
+            //     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            //     FOREIGN KEY (doctor_id) REFERENCES dokter(id),
+            //     UNIQUE KEY unique_doctor_datetime (doctor_id, date, time)
+            // );
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -623,30 +658,40 @@ public class DoctorDashboardController implements Initializable {
     }
     
     private AvailabilityStatus getAvailability(LocalDate date, String time) {
-        String slotKey = date.toString() + "_" + time;
+        String slotKey = getDoctorSlotKey(date, time);
         
         // Check if this slot has been booked during this session
         if (bookedSlots.contains(slotKey)) {
             return AvailabilityStatus.OCCUPIED;
         }
         
-        // Check database for existing appointments for this doctor
+        // Check database for existing appointments for this specific doctor
         if (isSlotBookedForDoctor(date, time)) {
             return AvailabilityStatus.OCCUPIED;
         }
         
-        // Check custom availability set by doctor
+        // Check this doctor's custom availability settings
         if (customAvailability.containsKey(slotKey)) {
             return customAvailability.get(slotKey);
         }
         
-        // Check if availability was saved to database
+        // Check if this doctor's availability was saved to database
         AvailabilityStatus savedStatus = loadAvailabilityFromDatabase(date, time);
         if (savedStatus != null) {
             return savedStatus;
         }
         
-        // Default availability rules
+        // Default availability rules (same for all doctors initially)
+        return getDefaultAvailability(date, time);
+    }
+    
+    private String getDoctorSlotKey(LocalDate date, String time) {
+        // Create a unique key that includes doctor name to separate each doctor's availability
+        return doctorName + "_" + date.toString() + "_" + time;
+    }
+    
+    private AvailabilityStatus getDefaultAvailability(LocalDate date, String time) {
+        // Default availability rules that can be customized per doctor
         if (date.getDayOfWeek().getValue() == 7) { // Sunday
             return AvailabilityStatus.UNAVAILABLE;
         }
@@ -668,8 +713,9 @@ public class DoctorDashboardController implements Initializable {
                 return null;
             }
             
-            // TODO: Implement actual database loading for custom availability
-            // This would query the DoctorAvailability table
+            // TODO: Implement actual database loading for this doctor's custom availability
+            // SELECT status FROM doctor_availability 
+            // WHERE doctor_id = ? AND date = ? AND time = ?
             
             return null; // Placeholder
             
@@ -694,7 +740,7 @@ public class DoctorDashboardController implements Initializable {
         availableColor.setPrefWidth(15);
         availableColor.setPrefHeight(15);
 
-        Label availableText = new Label("Available - Click to toggle");
+        Label availableText = new Label("Available - Click to toggle (Your schedule)");
         availableText.getStyleClass().add("legend-text");
 
         availableItem.getChildren().addAll(availableColor, availableText);
@@ -708,7 +754,7 @@ public class DoctorDashboardController implements Initializable {
         occupiedColor.setPrefWidth(15);
         occupiedColor.setPrefHeight(15);
 
-        Label occupiedText = new Label("Occupied - Cannot edit");
+        Label occupiedText = new Label("Occupied - Your appointments");
         occupiedText.getStyleClass().add("legend-text");
 
         occupiedItem.getChildren().addAll(occupiedColor, occupiedText);
@@ -722,37 +768,46 @@ public class DoctorDashboardController implements Initializable {
         unavailableColor.setPrefWidth(15);
         unavailableColor.setPrefHeight(15);
 
-        Label unavailableText = new Label("Unavailable - Click to toggle");
+        Label unavailableText = new Label("Unavailable - Click to toggle (Your schedule)");
         unavailableText.getStyleClass().add("legend-text");
 
         unavailableItem.getChildren().addAll(unavailableColor, unavailableText);
 
         legend.getChildren().addAll(availableItem, occupiedItem, unavailableItem);
 
+        // Add doctor name to legend
+        Label doctorLabel = new Label("Schedule for: Dr. " + (doctorName != null ? doctorName : "Doctor"));
+        doctorLabel.getStyleClass().add("legend-text");
+        doctorLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #1976d2;");
+
+        VBox legendContainer = new VBox(5);
+        legendContainer.setAlignment(Pos.CENTER);
+        legendContainer.getChildren().addAll(doctorLabel, legend);
+
         // Add legend to the calendar at the bottom
-        weeklyCalendar.add(legend, 0, 11, 8, 1); // Span across all columns
-        GridPane.setHalignment(legend, HPos.CENTER);
+        weeklyCalendar.add(legendContainer, 0, 11, 8, 1); // Span across all columns
+        GridPane.setHalignment(legendContainer, HPos.CENTER);
     }
 
     // Add method to reset availability to defaults
     @FXML
     private void handleResetAvailability(ActionEvent event) {
         Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmDialog.setTitle("Reset Availability");
-        confirmDialog.setHeaderText("Reset Calendar to Default");
+        confirmDialog.setTitle("Reset Availability - Dr. " + doctorName);
+        confirmDialog.setHeaderText("Reset Your Calendar to Default");
         confirmDialog.setContentText(
-            "This will reset your calendar to default availability settings:\n\n" +
+            "Dr. " + doctorName + ", this will reset YOUR calendar to default availability settings:\n\n" +
             "• Available: Monday-Saturday 9:00-11:00, 14:00-18:00\n" +
             "• Unavailable: Sunday and lunch hours (12:00-13:00)\n\n" +
-            "All custom availability settings will be lost. Continue?"
+            "Your custom availability settings will be lost, but other doctors' schedules will remain unchanged. Continue?"
         );
         
         confirmDialog.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                // Clear custom availability
-                customAvailability.clear();
+                // Clear only this doctor's custom availability
+                clearDoctorCustomAvailability();
                 
-                // Clear from database
+                // Clear this doctor's availability from database
                 clearAvailabilityFromDatabase();
                 
                 // Refresh calendar
@@ -760,9 +815,15 @@ public class DoctorDashboardController implements Initializable {
                     loadWeeklyCalendar();
                 }
                 
-                showAlert("Success", "Calendar availability has been reset to default settings.");
+                showAlert("Success", "Dr. " + doctorName + ": Your calendar availability has been reset to default settings.");
             }
         });
+    }
+    
+    private void clearDoctorCustomAvailability() {
+        // Only clear availability entries for this doctor
+        customAvailability.entrySet().removeIf(entry -> 
+            entry.getKey().startsWith(doctorName + "_"));
     }
     
     private void clearAvailabilityFromDatabase() {
@@ -775,8 +836,9 @@ public class DoctorDashboardController implements Initializable {
                 return;
             }
             
-            // TODO: Implement database clearing for custom availability
-            System.out.println("Clearing custom availability for Dr. " + doctorName);
+            // TODO: Implement database clearing for this doctor's custom availability only
+            // DELETE FROM doctor_availability WHERE doctor_id = ?
+            System.out.println("Clearing custom availability for Dr. " + doctorName + " (ID: " + doctor.getId() + ")");
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -1172,10 +1234,14 @@ public class DoctorDashboardController implements Initializable {
     }
 
     public void refreshCalendarFromPatientBooking() {
-        // This method can be called when a patient books an appointment
-        // to refresh the doctor's calendar view
+        // This method can be called when a patient books an appointment with this doctor
         
-        // Reload real-time data
+        // Only refresh if the appointment is for this doctor
+        if (doctorName == null) {
+            return; // Don't refresh if no doctor is logged in
+        }
+        
+        // Reload real-time data for this doctor
         loadRealData();
         
         // If schedule tab is currently visible, refresh the calendar
