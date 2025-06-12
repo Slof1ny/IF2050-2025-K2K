@@ -2585,4 +2585,104 @@ public class Database {
         
         return false;
     }
+    
+    // =================== CHECKOUT AND ORDER METHODS ===================
+      // Method untuk mendapatkan ID pelanggan berdasarkan nama (untuk logged user)
+    public int getPelangganIdByNama(String nama) {
+        String selectSQL = "SELECT id FROM pelanggan WHERE nama = ?";
+        System.out.println("DEBUG - Searching for customer with name: '" + nama + "'");
+        try (PreparedStatement stmt = connection.prepareStatement(selectSQL)) {
+            stmt.setString(1, nama);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                int id = rs.getInt("id");
+                System.out.println("DEBUG - Found customer ID: " + id);
+                return id;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting pelanggan ID by nama: " + e.getMessage());
+        }
+        System.out.println("DEBUG - Customer not found");
+        return -1; // Return -1 if not found
+    }
+      // Method untuk menambah pesanan dengan detail dalam satu transaksi (untuk checkout)
+    public boolean addPesananWithDetails(int idPelanggan, java.util.List<Controller.DashboardController.CartItem> cartItems, double totalHarga) {
+        String insertPesananSQL = "INSERT INTO pesanan (id_pelanggan, tanggal, status) VALUES (?, ?, ?)";
+        String insertDetailSQL = "INSERT INTO detail_pesanan (id_pesanan, id_produk, kuantitas, total_harga) VALUES (?, ?, ?, ?)";
+        String updateStokSQL = "UPDATE produk SET stok = stok - ? WHERE id = ?";
+        
+        try {
+            connection.setAutoCommit(false); // Start transaction
+              // Insert pesanan
+            int idPesanan;
+            try (PreparedStatement pesananStmt = connection.prepareStatement(insertPesananSQL)) {
+                pesananStmt.setInt(1, idPelanggan);
+                pesananStmt.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
+                pesananStmt.setString(3, "selesai");
+                
+                int rowsAffected = pesananStmt.executeUpdate();
+                if (rowsAffected == 0) {
+                    connection.rollback();
+                    return false;
+                }
+                
+                // Get generated pesanan ID using SQLite's last_insert_rowid()
+                String getLastIdSQL = "SELECT last_insert_rowid()";
+                try (PreparedStatement lastIdStmt = connection.prepareStatement(getLastIdSQL);
+                     ResultSet lastIdRs = lastIdStmt.executeQuery()) {
+                    if (lastIdRs.next()) {
+                        idPesanan = lastIdRs.getInt(1);
+                    } else {
+                        connection.rollback();
+                        return false;
+                    }
+                }
+            }
+            
+            // Insert detail pesanan and update stock for each cart item
+            try (PreparedStatement detailStmt = connection.prepareStatement(insertDetailSQL);
+                 PreparedStatement stokStmt = connection.prepareStatement(updateStokSQL)) {
+                
+                for (Controller.DashboardController.CartItem item : cartItems) {
+                    // Insert detail pesanan
+                    detailStmt.setInt(1, idPesanan);
+                    detailStmt.setInt(2, item.getProduct().getId());
+                    detailStmt.setInt(3, item.getQuantity());
+                    detailStmt.setDouble(4, item.getTotalPrice());
+                    detailStmt.executeUpdate();
+                    
+                    // Update product stock
+                    stokStmt.setInt(1, item.getQuantity());
+                    stokStmt.setInt(2, item.getProduct().getId());
+                    int stockUpdateRows = stokStmt.executeUpdate();
+                    
+                    if (stockUpdateRows == 0) {
+                        System.err.println("Warning: Stock update failed for product ID: " + item.getProduct().getId());
+                        connection.rollback();
+                        return false;
+                    }
+                }
+            }
+            
+            connection.commit(); // Commit transaction
+            System.out.println("Order successfully saved with ID: " + idPesanan + " for customer ID: " + idPelanggan);
+            return true;
+            
+        } catch (SQLException e) {
+            try {
+                connection.rollback(); // Rollback on error
+            } catch (SQLException rollbackEx) {
+                System.err.println("Error rolling back transaction: " + rollbackEx.getMessage());
+            }
+            System.err.println("Error adding pesanan with details: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        } finally {
+            try {
+                connection.setAutoCommit(true); // Reset auto-commit
+            } catch (SQLException e) {
+                System.err.println("Error resetting auto-commit: " + e.getMessage());
+            }
+        }
+    }
 }

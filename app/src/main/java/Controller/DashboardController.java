@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.text.NumberFormat;
 
 public class DashboardController implements Initializable {
     public static String loggedRole = "";
@@ -36,14 +37,11 @@ public class DashboardController implements Initializable {
     private String currentActiveTab = "home";
     
     // Add field to track current appointment tab
-    private String currentAppointmentTab = "book";
-    
-    // Add fields to track selections
+    private String currentAppointmentTab = "book";    // Add fields to track selections
     private String selectedDoctor = null;
     private String selectedAppointmentType = null;
     private HBox selectedDoctorCard = null;
     private VBox selectedTypeCard = null;
-    private boolean showingCalendar = false;
     private boolean showingAppointmentTypes = false;
     private LocalDate selectedDate = null;
     private String selectedTime = null;
@@ -58,6 +56,24 @@ public class DashboardController implements Initializable {
 
     // Add static reference to doctor dashboard for updates
     private static Object doctorDashboardInstance = null;
+    
+    // Cart functionality
+    private static java.util.List<CartItem> cartItems = new java.util.ArrayList<>();
+      // Cart item class - make it public static so it can be accessed from Database class
+    public static class CartItem {
+        private Model.Produk product;
+        private int quantity;
+        
+        public CartItem(Model.Produk product, int quantity) {
+            this.product = product;
+            this.quantity = quantity;
+        }
+        
+        public Model.Produk getProduct() { return product; }
+        public int getQuantity() { return quantity; }
+        public void setQuantity(int quantity) { this.quantity = quantity; }
+        public double getTotalPrice() { return product.getHarga() * quantity; }
+    }
     
     public static void setDoctorDashboardInstance(Object instance) {
         doctorDashboardInstance = instance;
@@ -169,11 +185,9 @@ public class DashboardController implements Initializable {
     @FXML
     private void handleHelp() {
         showAlert("Help", "Help and support functionality will be implemented here.");
-    }
-
-    @FXML
+    }    @FXML
     private void handleEmergency() {
-        showAlert("Emergency", "Emergency contact functionality will be implemented here.\n\nFor immediate medical assistance, please call:\n\n🚨 Emergency: 119\n🏥 Hospital: (021) 123-4567");
+        showAlert("Emergency", "Emergency contact functionality will be implemented here.\n\nFor immediate medical assistance, please call:\n\n* Emergency: 119\n* Hospital: (021) 123-4567");
     }
 
     @FXML
@@ -204,15 +218,13 @@ public class DashboardController implements Initializable {
 
         // Week navigation
         HBox weekNavigation = new HBox(15);
-        weekNavigation.setAlignment(Pos.CENTER);
-
-        Button prevWeekBtn = new Button("◀ Previous Week");
+        weekNavigation.setAlignment(Pos.CENTER);        Button prevWeekBtn = new Button("< Previous Week");
         prevWeekBtn.getStyleClass().add("view-button");
 
         Label weekLabel = new Label("Week of " + currentWeekStart.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
         weekLabel.getStyleClass().add("section-header");
 
-        Button nextWeekBtn = new Button("Next Week ▶");
+        Button nextWeekBtn = new Button("Next Week >");
         nextWeekBtn.getStyleClass().add("view-button");
 
         weekNavigation.getChildren().addAll(prevWeekBtn, weekLabel, nextWeekBtn);
@@ -525,24 +537,23 @@ public class DashboardController implements Initializable {
             
             // Create appointment details
             VBox details = new VBox(5);
-            
-            Label dateLabel = new Label("📅 " + appointmentDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")));
+              Label dateLabel = new Label("Date: " + appointmentDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")));
             dateLabel.getStyleClass().add("field-label");
             
-            Label timeLabel = new Label("🕐 " + appointmentTime);
+            Label timeLabel = new Label("Time: " + appointmentTime);
             timeLabel.getStyleClass().add("field-label");
             
             // Status indicator
             LocalDate today = LocalDate.now();
             Label statusLabel = new Label();
             if (appointmentDate.isAfter(today)) {
-                statusLabel.setText("✅ Upcoming");
+                statusLabel.setText("Upcoming");
                 statusLabel.setStyle("-fx-text-fill: #28a745; -fx-font-weight: bold;");
             } else if (appointmentDate.equals(today)) {
-                statusLabel.setText("📍 Today");
+                statusLabel.setText("Today");
                 statusLabel.setStyle("-fx-text-fill: #007bff; -fx-font-weight: bold;");
             } else {
-                statusLabel.setText("✓ Completed");
+                statusLabel.setText("Completed");
                 statusLabel.setStyle("-fx-text-fill: #6c757d; -fx-font-weight: bold;");
             }
             
@@ -751,56 +762,236 @@ public class DashboardController implements Initializable {
         
         row.getChildren().addAll(labelText, valueText);
         return row;
-    }
-
-    private void loadCartContent() {
+    }    private void loadCartContent() {
         cartTabContent.getChildren().clear();
+        
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        
+        VBox scrollableContent = new VBox(20);
+        scrollableContent.setPadding(new Insets(20));
         
         Label header = new Label("Shopping Cart");
         header.getStyleClass().add("section-title");
         
-        VBox cartInfo = new VBox(20);
-        cartInfo.setAlignment(Pos.CENTER);
-        cartInfo.setPadding(new Insets(50));
+        if (cartItems.isEmpty()) {
+            // Empty cart state
+            VBox cartInfo = new VBox(20);
+            cartInfo.setAlignment(Pos.CENTER);
+            cartInfo.setPadding(new Insets(50));
+            
+            Label emptyMessage = new Label("Your cart is currently empty");
+            emptyMessage.getStyleClass().add("section-subtitle");
+            emptyMessage.setStyle("-fx-font-size: 18px; -fx-text-fill: #666;");
+            
+            Label subMessage = new Label("Browse our products to add items to your cart");
+            subMessage.getStyleClass().add("card-description");
+            
+            Button shopBtn = new Button("Start Shopping");
+            shopBtn.getStyleClass().add("hero-button-primary");
+            shopBtn.setPrefWidth(200);
+            shopBtn.setOnAction(e -> {
+                setActiveTab(productsTab);
+                showProductsTab();
+            });
+            
+            cartInfo.getChildren().addAll(emptyMessage, subMessage, shopBtn);
+            scrollableContent.getChildren().addAll(header, cartInfo);
+        } else {
+            // Cart with items
+            VBox cartItemsContainer = new VBox(15);
+            cartItemsContainer.setPadding(new Insets(20, 0, 20, 0));
+            
+            double totalPrice = 0;
+            
+            for (CartItem item : cartItems) {
+                VBox itemCard = createCartItemCard(item);
+                cartItemsContainer.getChildren().add(itemCard);
+                totalPrice += item.getTotalPrice();
+            }
+            
+            // Cart summary
+            VBox summarySection = new VBox(15);
+            summarySection.getStyleClass().add("service-card");
+            summarySection.setPadding(new Insets(20));
+            summarySection.setAlignment(Pos.CENTER);
+            
+            Label summaryHeader = new Label("Order Summary");
+            summaryHeader.getStyleClass().add("card-title");
+            summaryHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 18px;");
+            
+            Label itemCount = new Label("Items: " + cartItems.size());
+            itemCount.getStyleClass().add("field-label");
+            
+            NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
+            String formattedTotal = currencyFormat.format(totalPrice).replace("IDR", "Rp");
+            
+            Label totalLabel = new Label("Total: " + formattedTotal);
+            totalLabel.getStyleClass().add("section-subtitle");
+            totalLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c5282;");
+            
+            HBox actionButtons = new HBox(15);
+            actionButtons.setAlignment(Pos.CENTER);
+            
+            Button clearCartBtn = new Button("Clear Cart");
+            clearCartBtn.getStyleClass().add("hero-button-secondary");
+            clearCartBtn.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white;");
+            clearCartBtn.setOnAction(e -> handleClearCart());
+            
+            Button checkoutBtn = new Button("Checkout");
+            checkoutBtn.getStyleClass().add("hero-button-primary");
+            checkoutBtn.setPrefWidth(150);
+            checkoutBtn.setOnAction(e -> handleCheckout());
+            
+            actionButtons.getChildren().addAll(clearCartBtn, checkoutBtn);
+            summarySection.getChildren().addAll(summaryHeader, itemCount, totalLabel, actionButtons);
+            
+            scrollableContent.getChildren().addAll(header, cartItemsContainer, summarySection);
+        }
         
-        Label emptyMessage = new Label("Your cart is currently empty");
-        emptyMessage.getStyleClass().add("section-subtitle");
-        emptyMessage.setStyle("-fx-font-size: 18px; -fx-text-fill: #666;");
-        
-        Label subMessage = new Label("Browse our products to add items to your cart");
-        subMessage.getStyleClass().add("card-description");
-        
-        Button shopBtn = new Button("Start Shopping");
-        shopBtn.getStyleClass().add("hero-button-primary");
-        shopBtn.setPrefWidth(200);
-        shopBtn.setOnAction(e -> {
-            setActiveTab(productsTab);
-            showProductsTab();
-        });
-        
-        cartInfo.getChildren().addAll(emptyMessage, subMessage, shopBtn);
-        cartTabContent.getChildren().addAll(header, cartInfo);
-    }
-
-    private VBox createProductCard(String name, String price) {
-        VBox card = new VBox(10);
+        scrollPane.setContent(scrollableContent);
+        cartTabContent.getChildren().add(scrollPane);
+    }private VBox createProductCard(Model.Produk product) {
+        VBox card = new VBox(12);
         card.getStyleClass().add("service-card");
-        card.setAlignment(Pos.CENTER);
-        card.setPrefWidth(200);
-        card.setPrefHeight(250);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPrefWidth(220);
+        card.setPrefHeight(240); // Reduced height since we removed stock indicators
+        card.setPadding(new Insets(15));
         
-        Label productName = new Label(name);
+        // Product name
+        Label productName = new Label(product.getNama());
         productName.getStyleClass().add("card-title");
+        productName.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+        productName.setWrapText(true);
         
-        Label productPrice = new Label(price);
+        // Price formatting
+        NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
+        String formattedPrice = currencyFormat.format(product.getHarga()).replace("IDR", "Rp");
+        
+        Label productPrice = new Label(formattedPrice);
         productPrice.getStyleClass().add("section-subtitle");
+        productPrice.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c5282;");
+        
+        // Product description or category (optional)
+        Label productDescription = new Label("Quality optical product");
+        productDescription.getStyleClass().add("card-description");
+        productDescription.setStyle("-fx-font-size: 12px; -fx-text-fill: #666; -fx-wrap-text: true;");
+        
+        // Action buttons
+        HBox buttonContainer = new HBox(8);
+        buttonContainer.setAlignment(Pos.CENTER);
         
         Button addToCartBtn = new Button("Add to Cart");
         addToCartBtn.getStyleClass().add("hero-button-primary");
-        addToCartBtn.setOnAction(e -> showAlert("Cart", name + " added to cart"));
+        addToCartBtn.setPrefWidth(100);
         
-        card.getChildren().addAll(productName, productPrice, addToCartBtn);
+        Button viewDetailsBtn = new Button("Details");
+        viewDetailsBtn.getStyleClass().add("hero-button-secondary");
+        viewDetailsBtn.setPrefWidth(80);
+        
+        // Disable buttons if out of stock
+        if (product.getStok() <= 0) {
+            addToCartBtn.setDisable(true);
+            addToCartBtn.setText("Out of Stock");
+            addToCartBtn.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white;");
+        } else {
+            addToCartBtn.setOnAction(e -> handleAddToCart(product));
+        }
+        
+        viewDetailsBtn.setOnAction(e -> handleViewProductDetails(product));
+        
+        buttonContainer.getChildren().addAll(addToCartBtn, viewDetailsBtn);
+        
+        card.getChildren().addAll(productName, productPrice, productDescription, buttonContainer);
         return card;
+    }
+      private void handleAddToCart(Model.Produk product) {
+        // Create quantity selection dialog
+        Dialog<Integer> dialog = new Dialog<>();
+        dialog.setTitle("Add to Cart");
+        dialog.setHeaderText("Select quantity for " + product.getNama());
+        
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+        
+        Label productInfo = new Label("Product: " + product.getNama() + "\nPrice: " + 
+                                    NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+                                                .format(product.getHarga()).replace("IDR", "Rp"));
+        productInfo.getStyleClass().add("field-label");
+        
+        Label quantityLabel = new Label("Quantity:");
+        quantityLabel.getStyleClass().add("field-label");
+        
+        Spinner<Integer> quantitySpinner = new Spinner<>(1, Math.min(product.getStok(), 10), 1);
+        quantitySpinner.setEditable(true);
+        quantitySpinner.setPrefWidth(100);
+        
+        Label stockInfo = new Label("Available: " + product.getStok() + " units");
+        stockInfo.getStyleClass().add("card-description");
+        stockInfo.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
+        
+        content.getChildren().addAll(productInfo, quantityLabel, quantitySpinner, stockInfo);
+        dialog.getDialogPane().setContent(content);
+        
+        ButtonType addButtonType = new ButtonType("Add to Cart", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+        
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == addButtonType) {
+                return quantitySpinner.getValue();
+            }
+            return null;
+        });
+        
+        dialog.showAndWait().ifPresent(quantity -> {
+            if (quantity > 0 && quantity <= product.getStok()) {
+                // Check if product already exists in cart
+                CartItem existingItem = cartItems.stream()
+                    .filter(item -> item.getProduct().getId() == product.getId())
+                    .findFirst()
+                    .orElse(null);
+                
+                if (existingItem != null) {
+                    // Update quantity if product already in cart
+                    int newQuantity = existingItem.getQuantity() + quantity;
+                    if (newQuantity <= product.getStok()) {
+                        existingItem.setQuantity(newQuantity);
+                        showAlert("Cart Updated", product.getNama() + " quantity updated to " + newQuantity + 
+                                 "\nTotal: " + NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+                                                          .format(existingItem.getTotalPrice()).replace("IDR", "Rp"));
+                    } else {
+                        showAlert("Stock Limit", "Cannot add more items. Stock limit reached.");
+                    }
+                } else {
+                    // Add new item to cart
+                    cartItems.add(new CartItem(product, quantity));
+                    showAlert("Added to Cart", quantity + "x " + product.getNama() + " added to cart!\nTotal: " + 
+                             NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+                                        .format(product.getHarga() * quantity).replace("IDR", "Rp"));
+                }
+                
+                // Update cart display if cart tab is currently active
+                if (currentActiveTab.equals("cart")) {
+                    loadCartContent();
+                }
+            } else {
+                showAlert("Invalid Quantity", "Please select a valid quantity (1-" + product.getStok() + ")");
+            }
+        });
+    }
+    
+    private void handleViewProductDetails(Model.Produk product) {
+        String details = "Product Details:\n\n" +
+                        "Name: " + product.getNama() + "\n" +
+                        "Price: " + NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+                                                .format(product.getHarga()).replace("IDR", "Rp") + "\n" +
+                        "Stock: " + product.getStok() + " units\n" +
+                        "Product ID: " + product.getId();
+        
+        showAlert("Product Details", details);
     }
 
     private VBox createQuickBookCard(String title, String description) {
@@ -942,11 +1133,10 @@ public class DashboardController implements Initializable {
         
         Label dateInfo = new Label("Date: " + selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")));
         dateInfo.getStyleClass().add("selection-text");
-        
-        Label timeInfo = new Label("Time: " + selectedTime);
+          Label timeInfo = new Label("Time: " + selectedTime);
         timeInfo.getStyleClass().add("selection-text");
         
-        Button backBtn = new Button("← Back to Calendar");
+        Button backBtn = new Button("< Back to Calendar");
         backBtn.getStyleClass().add("hero-button-secondary");
         backBtn.setOnAction(e -> {
             showingAppointmentTypes = false;
@@ -1329,46 +1519,77 @@ public class DashboardController implements Initializable {
         profileTabContent.setManaged(false);
         cartTabContent.setVisible(false);
         cartTabContent.setManaged(false);
-    }
-
-    private void loadProductsContent() {
+    }    private void loadProductsContent() {
         productsTabContent.getChildren().clear();
+        
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        
+        VBox scrollableContent = new VBox(20);
+        scrollableContent.setPadding(new Insets(20));
         
         Label header = new Label("Our Products");
         header.getStyleClass().add("section-title");
         
-        HBox categories = new HBox(20);
-        categories.setAlignment(Pos.CENTER);
-        
-        Button framesBtn = new Button("Frames");
-        framesBtn.getStyleClass().add("hero-button-primary");
-        framesBtn.setOnAction(e -> showAlert("Frames", "Browse our collection of stylish frames"));
-        
-        Button lensesBtn = new Button("Lenses");
-        lensesBtn.getStyleClass().add("hero-button-primary");
-        lensesBtn.setOnAction(e -> showAlert("Lenses", "Explore our lens options"));
-        
-        Button sunglassesBtn = new Button("Sunglasses");
-        sunglassesBtn.getStyleClass().add("hero-button-primary");
-        sunglassesBtn.setOnAction(e -> showAlert("Sunglasses", "Check out our sunglasses collection"));
-        
-        Button accessoriesBtn = new Button("Accessories");
-        accessoriesBtn.getStyleClass().add("hero-button-primary");
-        accessoriesBtn.setOnAction(e -> showAlert("Accessories", "Browse eye care accessories"));
-        
-        categories.getChildren().addAll(framesBtn, lensesBtn, sunglassesBtn, accessoriesBtn);
-        
-        GridPane productsGrid = new GridPane();
-        productsGrid.setHgap(20);
-        productsGrid.setVgap(20);
-        productsGrid.setAlignment(Pos.CENTER);
-        
-        for (int i = 0; i < 6; i++) {
-            VBox productCard = createProductCard("Product " + (i + 1), "$" + (99 + i * 10));
-            productsGrid.add(productCard, i % 3, i / 3);
+        try {
+            Database.Database db = new Database.Database();
+            java.util.List<Model.Produk> products = db.getAllProduk();
+            
+            if (products.isEmpty()) {
+                Label noProductsLabel = new Label("No products available at the moment");
+                noProductsLabel.getStyleClass().add("card-description");
+                noProductsLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #666;");
+                
+                VBox emptyState = new VBox(20);
+                emptyState.setAlignment(Pos.CENTER);
+                emptyState.setPadding(new Insets(50));
+                emptyState.getChildren().add(noProductsLabel);
+                
+                scrollableContent.getChildren().addAll(header, emptyState);
+            } else {
+                // Create products grid
+                GridPane productsGrid = new GridPane();
+                productsGrid.setHgap(20);
+                productsGrid.setVgap(20);
+                productsGrid.setAlignment(Pos.CENTER);
+                productsGrid.setPadding(new Insets(20, 0, 20, 0));
+                
+                int cols = 3; // Number of columns
+                int row = 0;
+                int col = 0;
+                
+                for (Model.Produk product : products) {
+                    VBox productCard = createProductCard(product);
+                    productsGrid.add(productCard, col, row);
+                    
+                    col++;
+                    if (col >= cols) {
+                        col = 0;
+                        row++;
+                    }
+                }
+                
+                scrollableContent.getChildren().addAll(header, productsGrid);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            Label errorLabel = new Label("Error loading products: " + e.getMessage());
+            errorLabel.getStyleClass().add("card-description");
+            errorLabel.setStyle("-fx-text-fill: #dc3545; -fx-font-size: 14px;");
+            
+            VBox errorState = new VBox(20);
+            errorState.setAlignment(Pos.CENTER);
+            errorState.setPadding(new Insets(50));
+            errorState.getChildren().add(errorLabel);
+            
+            scrollableContent.getChildren().addAll(header, errorState);
         }
         
-        productsTabContent.getChildren().addAll(header, categories, productsGrid);
+        scrollPane.setContent(scrollableContent);
+        productsTabContent.getChildren().add(scrollPane);
     }
 
     private void loadAppointmentsContent() {
@@ -1480,16 +1701,14 @@ public class DashboardController implements Initializable {
 
         HBox weekNavigation = new HBox(15);
         weekNavigation.setAlignment(Pos.CENTER);
-        weekNavigation.setPadding(new Insets(10, 0, 10, 0));
-
-        Button prevWeekBtn = new Button("◀ Previous Week");
+        weekNavigation.setPadding(new Insets(10, 0, 10, 0));        Button prevWeekBtn = new Button("< Previous Week");
         prevWeekBtn.getStyleClass().add("hero-button-secondary");
 
         Label weekLabel = new Label("Week of " + currentWeekStart.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
         weekLabel.getStyleClass().add("section-subtitle");
         weekLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
-        Button nextWeekBtn = new Button("Next Week ▶");
+        Button nextWeekBtn = new Button("Next Week >");
         nextWeekBtn.getStyleClass().add("hero-button-secondary");
 
         weekNavigation.getChildren().addAll(prevWeekBtn, weekLabel, nextWeekBtn);
@@ -1747,5 +1966,258 @@ public class DashboardController implements Initializable {
                 }
             }
         });
+    }
+    
+    private VBox createCartItemCard(CartItem item) {
+        VBox card = new VBox(10);
+        card.getStyleClass().add("service-card");
+        card.setPadding(new Insets(15));
+        card.setAlignment(Pos.CENTER_LEFT);
+        
+        // Product info
+        HBox productInfo = new HBox(15);
+        productInfo.setAlignment(Pos.CENTER_LEFT);
+        
+        VBox productDetails = new VBox(5);
+        productDetails.setAlignment(Pos.CENTER_LEFT);
+        
+        Label productName = new Label(item.getProduct().getNama());
+        productName.getStyleClass().add("card-title");
+        productName.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+        
+        NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
+        String unitPrice = currencyFormat.format(item.getProduct().getHarga()).replace("IDR", "Rp");
+        Label priceLabel = new Label("Unit Price: " + unitPrice);
+        priceLabel.getStyleClass().add("card-description");
+        
+        productDetails.getChildren().addAll(productName, priceLabel);
+        productInfo.getChildren().add(productDetails);
+        
+        // Quantity controls
+        HBox quantityControls = new HBox(10);
+        quantityControls.setAlignment(Pos.CENTER_LEFT);
+        
+        Label quantityLabel = new Label("Quantity:");
+        quantityLabel.getStyleClass().add("field-label");
+        
+        Button decreaseBtn = new Button("-");
+        decreaseBtn.getStyleClass().add("hero-button-secondary");
+        decreaseBtn.setPrefWidth(30);
+        decreaseBtn.setOnAction(e -> {
+            if (item.getQuantity() > 1) {
+                item.setQuantity(item.getQuantity() - 1);
+                loadCartContent(); // Refresh cart display
+            }
+        });
+        
+        Label quantityDisplay = new Label(String.valueOf(item.getQuantity()));
+        quantityDisplay.getStyleClass().add("field-label");
+        quantityDisplay.setStyle("-fx-font-weight: bold; -fx-min-width: 30; -fx-alignment: center;");
+        
+        Button increaseBtn = new Button("+");
+        increaseBtn.getStyleClass().add("hero-button-secondary");
+        increaseBtn.setPrefWidth(30);
+        increaseBtn.setOnAction(e -> {
+            if (item.getQuantity() < item.getProduct().getStok()) {
+                item.setQuantity(item.getQuantity() + 1);
+                loadCartContent(); // Refresh cart display
+            } else {
+                showAlert("Stock Limit", "Cannot add more items. Stock limit reached.");
+            }
+        });
+        
+        quantityControls.getChildren().addAll(quantityLabel, decreaseBtn, quantityDisplay, increaseBtn);
+        
+        // Total price and remove button
+        HBox bottomRow = new HBox(15);
+        bottomRow.setAlignment(Pos.CENTER_LEFT);
+        
+        String totalPrice = currencyFormat.format(item.getTotalPrice()).replace("IDR", "Rp");
+        Label totalLabel = new Label("Total: " + totalPrice);
+        totalLabel.getStyleClass().add("section-subtitle");
+        totalLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c5282;");
+        
+        Button removeBtn = new Button("Remove");
+        removeBtn.getStyleClass().add("hero-button-secondary");
+        removeBtn.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white;");
+        removeBtn.setOnAction(e -> {
+            cartItems.remove(item);
+            loadCartContent(); // Refresh cart display
+            showAlert("Item Removed", item.getProduct().getNama() + " removed from cart.");
+        });
+        
+        bottomRow.getChildren().addAll(totalLabel, new javafx.scene.layout.Region(), removeBtn);
+        javafx.scene.layout.HBox.setHgrow(bottomRow.getChildren().get(1), javafx.scene.layout.Priority.ALWAYS);
+        
+        card.getChildren().addAll(productInfo, quantityControls, bottomRow);
+        return card;
+    }
+    
+    private void handleClearCart() {
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmDialog.setTitle("Clear Cart");
+        confirmDialog.setHeaderText("Are you sure you want to clear your cart?");
+        confirmDialog.setContentText("This action will remove all items from your cart.");
+        
+        confirmDialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                cartItems.clear();
+                loadCartContent();
+                showAlert("Cart Cleared", "All items have been removed from your cart.");
+            }
+        });
+    }
+    
+    private void handleCheckout() {
+        if (cartItems.isEmpty()) {
+            showAlert("Empty Cart", "Your cart is empty. Add some items before checkout.");
+            return;
+        }
+        
+        // Calculate total
+        double totalAmount = cartItems.stream()
+            .mapToDouble(CartItem::getTotalPrice)
+            .sum();
+        
+        NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
+        String formattedTotal = currencyFormat.format(totalAmount).replace("IDR", "Rp");
+        
+        Alert checkoutDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        checkoutDialog.setTitle("Checkout Confirmation");
+        checkoutDialog.setHeaderText("Confirm Your Order");
+        
+        // Create detailed checkout content
+        VBox checkoutContent = new VBox(15);
+        checkoutContent.setPadding(new Insets(20));
+        
+        Label summaryHeader = new Label("Order Summary:");
+        summaryHeader.getStyleClass().add("card-title");
+        summaryHeader.setStyle("-fx-font-weight: bold;");
+        
+        VBox itemsList = new VBox(5);
+        for (CartItem item : cartItems) {
+            String itemLine = item.getQuantity() + "x " + item.getProduct().getNama() + " - " + 
+                            currencyFormat.format(item.getTotalPrice()).replace("IDR", "Rp");
+            Label itemLabel = new Label(itemLine);
+            itemLabel.getStyleClass().add("field-label");
+            itemsList.getChildren().add(itemLabel);
+        }
+        
+        Label totalLabel = new Label("Total: " + formattedTotal);
+        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #2c5282;");
+        
+        checkoutContent.getChildren().addAll(summaryHeader, itemsList, totalLabel);
+        checkoutDialog.getDialogPane().setContent(checkoutContent);
+        
+        checkoutDialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                // Process checkout
+                boolean checkoutSuccess = processCheckout();
+                if (checkoutSuccess) {
+                    cartItems.clear();
+                    loadCartContent();
+                    showAlert("Order Placed", "Your order has been placed successfully!\nTotal: " + formattedTotal);
+                } else {
+                    showAlert("Checkout Failed", "There was an error processing your order. Please try again.");
+                }
+            }
+        });
+    }    private boolean processCheckout() {
+        if (cartItems.isEmpty()) {
+            showAlert("Empty Cart", "Your cart is empty. Add some products first.");
+            return false;
+        }
+        
+        try {
+            // Calculate total
+            double total = cartItems.stream().mapToDouble(CartItem::getTotalPrice).sum();
+            
+            // Get customer ID from logged name
+            Database.Database db = new Database.Database();
+            
+            // DEBUG: Print logged name
+            System.out.println("DEBUG - Logged user name: '" + loggedName + "'");
+            
+            int customerId = db.getPelangganIdByNama(loggedName);
+            
+            // DEBUG: Print customer ID lookup result
+            System.out.println("DEBUG - Customer ID lookup result: " + customerId);
+            
+            if (customerId == -1) {
+                // DEBUG: Try to see all customers in database
+                System.out.println("DEBUG - All customers in database:");
+                try {
+                    java.util.List<Model.Pelanggan> allCustomers = db.getAllPelanggan();
+                    for (Model.Pelanggan customer : allCustomers) {
+                        System.out.println("  ID: " + customer.getId() + ", Name: '" + customer.getNama() + "'");
+                    }
+                } catch (Exception e) {
+                    System.out.println("DEBUG - Error getting customers: " + e.getMessage());
+                }
+                
+                showAlert("Error", "Could not find customer information. Please login again.\nLogged name: '" + loggedName + "'");
+                return false;
+            }
+            
+            // Validate stock availability before checkout
+            for (CartItem item : cartItems) {
+                Model.Produk currentProduct = db.getProdukById(item.getProduct().getId());
+                if (currentProduct == null) {
+                    showAlert("Error", "Product " + item.getProduct().getNama() + " no longer exists.");
+                    return false;
+                }
+                if (currentProduct.getStok() < item.getQuantity()) {
+                    showAlert("Insufficient Stock", "Not enough stock for " + item.getProduct().getNama() + 
+                             ".\nAvailable: " + currentProduct.getStok() + ", Requested: " + item.getQuantity());
+                    return false;
+                }
+            }
+            
+            // Save order to database with stock reduction
+            boolean orderSaved = db.addPesananWithDetails(customerId, cartItems, total);
+            
+            if (!orderSaved) {
+                showAlert("Error", "Failed to save order to database. Please try again.");
+                return false;
+            }
+            
+            // Show enhanced order confirmation
+            showOrderConfirmationWithDatabase(total, customerId);
+            
+            return true;
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Error", "An error occurred during checkout: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    private void showOrderConfirmationWithDatabase(double total, int customerId) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Order Confirmed");
+        alert.setHeaderText("Your order has been successfully placed!");
+        
+        StringBuilder content = new StringBuilder();
+        content.append("Order Details:\n\n");
+        
+        // Show items from the cart that was just processed
+        NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
+        for (CartItem item : cartItems) {
+            content.append(String.format("• %s x%d - %s\n", 
+                item.getProduct().getNama(), 
+                item.getQuantity(),
+                currencyFormat.format(item.getTotalPrice()).replace("IDR", "Rp")));
+        }
+        
+        content.append("\n");
+        content.append(String.format("Total: %s\n", currencyFormat.format(total).replace("IDR", "Rp")));
+        content.append("Status: Order Completed\n");
+        content.append("Customer ID: ").append(customerId).append("\n\n");
+        content.append("Thank you for your purchase!\n");
+        content.append("Your products have been ordered and stock has been updated.");
+        
+        alert.setContentText(content.toString());
+        alert.showAndWait();
     }
 }
