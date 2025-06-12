@@ -33,7 +33,9 @@ public class JadwalPemeriksaan {
 
     public int getIdPasien() {
         return IdPasien;
-    }    public void setIdPasien(int idPasien) {
+    }
+    
+    public void setIdPasien(int idPasien) {
         this.IdPasien = idPasien;
     }
 
