@@ -157,18 +157,35 @@ public class LoginController {
         if (!loginSuccessful) {
             showAlert("Login Failed", "Nama atau password salah untuk role " + role + ".");
             return;
-        }
-
-        // Set info login ke DashboardController
+        }        // Set info login ke DashboardController
         Controller.DashboardController.setLoginInfo(role, name);
 
-        // Jika berhasil, ke dashboard
+        // Navigate to appropriate view based on role
         try {
             Stage stage = (Stage) signInButton.getScene().getWindow();
-            Parent dashboardRoot = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
+            String fxmlFile;
+            String windowTitle;
+            
+            switch (role) {
+                case "Admin":
+                    fxmlFile = "/fxml/AdminView.fxml";
+                    windowTitle = "TemuOptic Admin Dashboard";
+                    break;
+                case "Doctor":
+                    fxmlFile = "/fxml/DoctorDashboardView.fxml";
+                    windowTitle = "TemuOptic Doctor Dashboard";
+                    break;
+                case "Customer":
+                default:
+                    fxmlFile = "/fxml/DashboardView.fxml";
+                    windowTitle = "TemuOptic Dashboard";
+                    break;
+            }
+            
+            Parent dashboardRoot = FXMLLoader.load(getClass().getResource(fxmlFile));
             Scene dashboardScene = new Scene(dashboardRoot, 1000, 600);
             stage.setScene(dashboardScene);
-            stage.setTitle("TemuOptic Dashboard");
+            stage.setTitle(windowTitle);
             stage.centerOnScreen(); // Posisikan jendela di tengah layar
         } catch (IOException e) {
             e.printStackTrace();
