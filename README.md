@@ -3,14 +3,14 @@
 ## ✨ Project Description
 Optik XYZ is a JavaFX-based optical store management system that helps manage prescriptions, appointments, and inventory tracking. Built with love and determination! がんばって! (Ganbatte!)
 
-## 🎭 Our Amazing Team (Nakama)
+## 🎭 Our Amazing Team (Team Wibu)
 ### Squad K2K:
-* 🌟 Muhammad Farhan (18223004) - *The Strategic Mind*
-* 🌟 Henrycus Hugatama R. (18223008) - *The Code Artist*
-* 🌟 Mudzaki Kaarzaqiel Hakim (18223024) - *The Database Sage*
-* 🌟 Darryl Rizqi Ramadhan (18223084) - *The Frontend Guardian*
-* 🌟 Raditya Zaki Athaya (18223086) - *The Backend Ninja*
-* 🌟 Joan Melkior Silaen (18223102) - *The Testing Samurai*
+* 🌟 Muhammad Farhan (18223004) - *Mediocre Truff*
+* 🌟 Henrycus Hugatama R. (18223008) - *perigud periwel card player*
+* 🌟 Mudzaki Kaarzaqiel Hakim (18223024) - *El Spy Truff*
+* 🌟 Darryl Rizqi Ramadhan (18223084) - *El Hoki*
+* 🌟 Raditya Zaki Athaya (18223086) - *The Truff suhu*
+* 🌟 Joan Melkior Silaen (18223102) - *El God Kobul (satire)*
 
 ## 🛠️ Tech Stack
 * Java + JavaFX - *For the power of GUI!*
