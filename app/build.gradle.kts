@@ -202,6 +202,14 @@ tasks.register<JavaExec>("runDokterAvailabilityDemo") {
     standardInput = System.`in`
 }
 
+// Task untuk debug checkout functionality
+tasks.register<JavaExec>("debugCheckout") {
+    group = "application"
+    description = "Debug checkout functionality issues"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "Test.CheckoutDebugTest"
+}
+
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }
