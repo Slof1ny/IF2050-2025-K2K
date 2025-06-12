@@ -6,6 +6,7 @@ import Model.Dokter;
 import java.util.Date;
 import java.util.List;
 import java.sql.Time;
+import java.util.Map;
 
 public class JadwalPemeriksaanCtrl {
     private Database db = new Database();
@@ -44,6 +45,33 @@ public class JadwalPemeriksaanCtrl {
         java.sql.Time jamSelesai = new java.sql.Time(tanggalWaktu.getTime() + 3600000); // +1 jam
         
         return ketersediaanController.getDokterTersedia(tanggal, jamMulai, jamSelesai);
+    }
+    
+    // Method untuk booking appointment dengan dokter dan kalender spesifik
+    public boolean bookAppointmentWithDoctorCalendar(int idDokter, Date tanggal, String waktu, int idPasien) {
+        java.sql.Date sqlDate = new java.sql.Date(tanggal.getTime());
+        return db.bookAppointmentWithDoctor(idDokter, sqlDate, waktu, idPasien);
+    }
+    
+    // Method untuk mengambil kalender dokter
+    public List<Map<String, Object>> getDoctorAvailableSlots(int idDokter, Date tanggal) {
+        java.sql.Date sqlDate = new java.sql.Date(tanggal.getTime());
+        return db.getAvailableTimeSlotsForDoctor(idDokter, sqlDate);
+    }
+    
+    // Method untuk mengambil semua dokter
+    public List<Dokter> getAllDoctors() {
+        return db.getAllDokter();
+    }
+    
+    // Method untuk mengambil appointment pasien dengan info dokter
+    public List<Map<String, Object>> getPatientAppointmentsWithDoctorInfo(int idPasien) {
+        return db.getPatientAppointmentsWithDoctorInfo(idPasien);
+    }
+    
+    // Method untuk cancel appointment
+    public boolean cancelPatientAppointment(int idJadwal, int idPasien) {
+        return db.cancelAppointment(idJadwal, idPasien);
     }
     
     // Method untuk menutup koneksi database
